@@ -147,7 +147,7 @@ fun SmartRemoteApp(viewModel: RemoteViewModel = viewModel()) {
                     }
                 },
                 actions = {
-                    if (selectedDeviceId != null) {
+                    if (selectedDeviceId != null && selectedDeviceId != "__all__") {
                         Button(
                             onClick = {
                                 viewModel.identifyDevice(selectedDeviceId!!)
@@ -444,8 +444,15 @@ fun DeviceItem(
             )
         }
 
-        IconButton(onClick = onRenameClick) {
-            Icon(Icons.Rounded.Edit, contentDescription = "Edit", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+        if (device.id != "__all__") {
+            IconButton(onClick = onRenameClick) {
+                Icon(
+                    Icons.Rounded.Edit,
+                    contentDescription = "Edit",
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
         if (isSelected) {
