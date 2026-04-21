@@ -79,6 +79,11 @@ class RemoteViewModel : ViewModel() {
                         } ?: emptyList()
 
                         _devices.value = newDevices
+                        _devices.value.forEach {
+                            if (it.id == "__all__"){
+                                selectDevice(it.id)
+                            }
+                        }
                     }
                     else -> {
                         viewModelScope.launch {
