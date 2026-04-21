@@ -22,6 +22,7 @@ import com.sample.smartremote.data.SocketEventsHelper.Settings
 import com.sample.smartremote.data.SocketEventsHelper.VolumeDown
 import com.sample.smartremote.data.SocketEventsHelper.VolumeUp
 import com.sample.smartremote.data.WebSocketResponse
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -79,11 +80,7 @@ class RemoteViewModel : ViewModel() {
                         } ?: emptyList()
 
                         _devices.value = newDevices
-                        _devices.value.forEach {
-                            if (it.id == "__all__"){
-                                selectDevice(it.id)
-                            }
-                        }
+                        handleDefaultDeviceSelection(_devices.value)
                     }
                     else -> {
                         viewModelScope.launch {
@@ -95,6 +92,16 @@ class RemoteViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 Log.e("WebSocket", "Error parsing message", e)
+            }
+        }
+
+        private fun handleDefaultDeviceSelection(deviceList: List<RemoteDevice>) {
+            if (deviceList.isNotEmpty()){
+                deviceList.forEach {
+                    if (it.id == "__all__"){
+                        selectDevice(it.id)
+                    }
+                }
             }
         }
 
