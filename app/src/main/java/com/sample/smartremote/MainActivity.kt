@@ -37,6 +37,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -220,6 +221,8 @@ fun SmartRemoteApp(viewModel: RemoteViewModel = viewModel()) {
                         is RemoteState.ERROR -> (uiState as? RemoteState.ERROR)?.message?: "Something went wrong"
                         is RemoteState.RESULT -> viewModel.getExtractedMessage(uiState as? RemoteState.RESULT)
                     },
+                    modifier = Modifier.padding(horizontal = 16.dp ,0.dp),
+                    textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
