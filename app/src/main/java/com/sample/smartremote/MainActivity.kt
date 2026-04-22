@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sample.smartremote.data.RemoteDevice
@@ -47,6 +51,7 @@ import com.sample.smartremote.data.RemoteState
 import com.sample.smartremote.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,6 +88,24 @@ fun SmartRemoteApp(viewModel: RemoteViewModel = viewModel()) {
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState()
     var showDeviceSheet by remember { mutableStateOf(false) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) {
+                viewModel.connect()
+            } else if (event == Lifecycle.Event.ON_STOP) {
+                viewModel.disconnect()
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -304,7 +327,9 @@ fun SmartRemoteApp(viewModel: RemoteViewModel = viewModel()) {
                         showDeviceSheet = false
                     }
                 },
-                onRename = { id, name -> viewModel.renameDevice(id, name) },
+                onRename = { id, name ->
+                    viewModel.renameDevice(id, name)
+                           },
                 onDismiss = { showDeviceSheet = false },
                 sheetState = sheetState
             )
@@ -348,7 +373,7 @@ fun DeviceSelectionSheet(
                         color = Color.White
                     )
                     Text(
-                        "${devices.size} devices available on current network",
+                        if (devices.isEmpty()) "No device available" else "${devices.size} devices available ",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.7f)
                     )
@@ -397,106 +422,70 @@ fun DeviceItem(
     onClick: () -> Unit,
     onRenameClick: () -> Unit
 ) {
-    val backgroundColor = if (isSelected) SurfaceContainerHighest else Color.Transparent
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(backgroundColor)
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        onClick = onClick,
+        color = if (isSelected) Primary.copy(alpha = 0.15f) else SurfaceContainerHighest,
+        shape = RoundedCornerShape(20.dp),
+        border = if (isSelected) {
+            androidx.compose.foundation.BorderStroke(1.dp, Primary.copy(alpha = 0.5f))
+        } else null
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (isSelected) Primary else SurfaceContainerHighest),
-            contentAlignment = Alignment.Center
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Tv,
-                contentDescription = null,
-                tint = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.size(24.dp)
-            )
-        }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(if (isSelected) Primary else SurfaceContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Tv,
+                    contentDescription = null,
+                    tint = if (isSelected) Color.White else Color.White.copy(alpha = 0.6f)
+                )
+            }
 
-        Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     device.name,
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                     color = Color.White
                 )
-                if (isSelected) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Box(modifier = Modifier.size(6.dp).background(Primary, CircleShape))
+                Text(
+                    if (isSelected) "Connected" else "Available",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected) Primary else Color.White.copy(alpha = 0.5f)
+                )
+            }
+
+            if (device.id != "__all__") {
+                IconButton(onClick = onRenameClick) {
+                    Icon(
+                        imageVector = Icons.Rounded.Edit,
+                        contentDescription = "Rename",
+                        tint = Color.White.copy(alpha = 0.4f),
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
-            Text(
-                "ID: ${device.id}",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.5f)
-            )
-        }
 
-        if (device.id != "__all__") {
-            IconButton(onClick = onRenameClick) {
+            if (isSelected) {
                 Icon(
-                    Icons.Rounded.Edit,
-                    contentDescription = "Edit",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(20.dp)
+                    imageVector = Icons.Rounded.CheckCircle,
+                    contentDescription = "Selected",
+                    tint = Primary,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
-
-        if (isSelected) {
-            Icon(
-                Icons.Rounded.CheckCircle,
-                contentDescription = "Selected",
-                tint = Primary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
     }
-}
-
-@Composable
-fun RenameDialog(
-    currentName: String,
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var text by remember { mutableStateOf(currentName) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Rename Device", color = Color.White) },
-        text = {
-            TextField(
-                value = text,
-                onValueChange = { text = it },
-                singleLine = true,
-                colors = TextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
-                )
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(text) }) { Text("Save", color = Primary) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = Color.White) }
-        },
-        containerColor = SurfaceContainerHighest
-    )
 }
 
 @Composable
@@ -662,4 +651,46 @@ fun QuickActionButton(
             color = if (isPressed) activeColor else Color.White.copy(alpha = 0.5f)
         )
     }
+}
+
+
+@Composable
+fun RenameDialog(
+    currentName: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var text by remember { mutableStateOf(currentName) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename Device", color = Color.White) },
+        text = {
+            TextField(
+                value = text,
+                onValueChange = { text = it },
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = SurfaceContainerHighest,
+                    unfocusedContainerColor = SurfaceContainerHighest,
+                    cursorColor = Primary
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(text) }) {
+                Text("Save", color = Primary)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+            }
+        },
+        containerColor = SurfaceContainer,
+        textContentColor = Color.White,
+        titleContentColor = Color.White
+    )
 }

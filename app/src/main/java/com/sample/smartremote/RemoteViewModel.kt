@@ -48,6 +48,8 @@ class RemoteViewModel : ViewModel() {
     private val _selectedDeviceId = MutableStateFlow<String?>(null)
     val selectedDeviceId = _selectedDeviceId.asStateFlow()
 
+    private var isManualDisconnect = false
+
     private val wsListener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             Log.d("WebSocket", "Connected")
@@ -108,9 +110,11 @@ class RemoteViewModel : ViewModel() {
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             _uiState.value = RemoteState.ERROR(t.message)
             Log.e("WebSocket", "Failure", t)
-            viewModelScope.launch {
-                delay(5000)
-                connectToWebSocket()
+            if (!isManualDisconnect) {
+                viewModelScope.launch {
+                    delay(5000)
+                    connect()
+                }
             }
         }
 
@@ -121,12 +125,18 @@ class RemoteViewModel : ViewModel() {
     }
 
     init {
-        connectToWebSocket()
+        connect()
     }
 
-    private fun connectToWebSocket() {
+    fun connect() {
+        isManualDisconnect = false
         // Removed updating _statusText to "Connecting..." to keep the suggestion visible
         webSocketService.connect("ws://63.178.32.34:3000/?clientType=remote&customerId=customer2", wsListener)
+    }
+
+    fun disconnect() {
+        isManualDisconnect = true
+        webSocketService.disconnect()
     }
 
     fun toggleListening(deviceId: String?) {
@@ -172,7 +182,7 @@ class RemoteViewModel : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         audioService.stopRecording()
-        webSocketService.disconnect()
+        disconnect()
     }
 
     fun getRandomSuggestions(): String {
