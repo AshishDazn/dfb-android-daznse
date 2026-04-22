@@ -98,6 +98,56 @@ class RemoteViewModel : ViewModel() {
         }
 
         private fun handleDefaultDeviceSelection(deviceList: List<RemoteDevice>) {
+            if (deviceList.isEmpty()) {
+                _selectedDeviceId.value = null
+                return
+            }
+
+            // Check if current selection is still valid
+            val currentSelection = _selectedDeviceId.value
+            val isCurrentSelectionValid = deviceList.any { it.id == currentSelection }
+
+            if (!isCurrentSelectionValid) {
+                val allDevicesOption = deviceList.find { it.id == "__all__" }
+                if (deviceList.size > 1 && allDevicesOption != null) {
+                    // More than one device (including __all__), default to __all__
+                    _selectedDeviceId.value = "__all__"
+                } else {
+                    // Only one device (might be __all__ or a specific one), select the first one
+                    _selectedDeviceId.value = deviceList.first().id
+                }
+            } else if (deviceList.size == 1) {
+                // List reduced to one, select it even if previous selection was something else (like __all__ which might have been removed)
+                _selectedDeviceId.value = deviceList.first().id
+            } else if (deviceList.size > 1 && currentSelection != "__all__") {
+                // If we have multiple devices but a specific one was selected, keep it if it's still there.
+                // However, the prompt says "default selection is all devices" when more than one. 
+                // Let's ensure if it was a single device and now there are multiple, we don't necessarily jump to __all__ unless explicitly needed.
+                // But specifically for the "list reduced to one" case:
+                if (deviceList.none { it.id == "__all__" } || deviceList.size == 2 && deviceList.any { it.id == "__all__" }) {
+                     // If there's only one REAL device + __all__, or just one real device:
+                     val realDevices = deviceList.filter { it.id != "__all__" }
+                     if (realDevices.size == 1) {
+                         _selectedDeviceId.value = realDevices.first().id
+                     }
+                }
+            }
+            
+            // Re-refining the logic based on exact prompt:
+            // "When there is more than one device connected the default selection is all devices"
+            // "when one of more device is disconnected resulting to the device list to one. Select the available device by default."
+            
+            val realDevices = deviceList.filter { it.id != "__all__" }
+            if (realDevices.size > 1) {
+                if (_selectedDeviceId.value == null || !deviceList.any { it.id == _selectedDeviceId.value }) {
+                    _selectedDeviceId.value = "__all__"
+                }
+            } else if (realDevices.size == 1) {
+                _selectedDeviceId.value = realDevices.first().id
+            }
+        }
+
+        /*private fun handleDefaultDeviceSelection(deviceList: List<RemoteDevice>) {
             if (deviceList.isNotEmpty()){
                 deviceList.forEach {
                     if (it.id == "__all__"){
@@ -105,7 +155,7 @@ class RemoteViewModel : ViewModel() {
                     }
                 }
             }
-        }
+        }*/
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             _uiState.value = RemoteState.ERROR(t.message)
