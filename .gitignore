@@ -12,6 +12,9 @@ build/
 .gradle/
 #local.properties
 
+# Kotlin
+.kotlin/
+
 # Android
 *.apk
 *.ap_

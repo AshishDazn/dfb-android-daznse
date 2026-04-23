@@ -19,9 +19,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://maven.jetbrains.com/public")
     }
 }
 
 rootProject.name = "SmartRemote"
 include(":app")
- 
+include(":shared")

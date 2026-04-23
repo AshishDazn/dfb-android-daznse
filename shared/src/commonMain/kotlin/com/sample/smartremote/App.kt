@@ -1,13 +1,5 @@
 package com.sample.smartremote
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -19,8 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.VolumeDown
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,118 +23,34 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sample.smartremote.data.RemoteDevice
 import com.sample.smartremote.data.RemoteState
-import com.sample.smartremote.ui.theme.*
+import com.sample.smartremote.ui.*
+import dev.icerock.moko.mvvm.compose.getViewModel
+import dev.icerock.moko.mvvm.compose.viewModelFactory
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
-
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                // Permission is granted. Continue the action or workflow in your
-                // app.
-            } else {
-                // Explain to the user that the feature is unavailable because the
-                // feature requires a permission that the user has denied. At the
-                // same time, respect the user's decision. Don't link to system
-                // settings in an effort to convince the user to change their
-                // decision.
-            }
-        }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        //val splashScreen = installSplashScreen()
-        enableEdgeToEdge()
-        super.onCreate(savedInstanceState)
-
-        /*var keepSplashScreen = true
-        splashScreen.setKeepOnScreenCondition { keepSplashScreen }
-
-        lifecycleScope.launch {
-            delay(3000)
-            keepSplashScreen = false
-        }*/
-
-        setContent {
-            SmartRemoteTheme {
-                SmartRemoteApp()
-            }
-        }
-
-        verifyAppPermissions()
-    }
-
-    private fun verifyAppPermissions() {
-        when {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                // You can use the API that requires the permission.
-            }
-
-            shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) -> {
-                // In an educational UI, explain to the user why your app requires this
-                // permission for a specific feature to behave as expected, and what
-                // features are disabled if it's declined. In this UI, include a
-                // "cancel" or "no thanks" button that lets the user continue
-                // using your app without granting the permission.
-            }
-
-            else -> {
-                // You can directly ask for the permission.
-                requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
-        }
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SmartRemoteApp1(viewModel: RemoteViewModel = viewModel()) {
+@OptIn(ExperimentalMaterial3Api::class)
+fun SmartRemoteApp(viewModel: RemoteViewModel = getViewModel(Unit, viewModelFactory { RemoteViewModel(AudioService()) })) {
+
     val uiState by viewModel.uiState.collectAsState()
     val statusText by viewModel.statusText.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val selectedDeviceId by viewModel.selectedDeviceId.collectAsState()
 
-    val context = LocalContext.current
-    val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState()
+
     var showDeviceSheet by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
     val selectedDevice = devices.find { it.id == selectedDeviceId }
-
-    var hasPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasPermission = isGranted
-    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -174,7 +81,7 @@ fun SmartRemoteApp1(viewModel: RemoteViewModel = viewModel()) {
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             (selectedDevice?.name ?: "Select Device"),
-                            style = MaterialTheme.typography.titleSmall.copy(
+                            style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.5.sp
                             ),
@@ -193,7 +100,6 @@ fun SmartRemoteApp1(viewModel: RemoteViewModel = viewModel()) {
                         Button(
                             onClick = {
                                 viewModel.identifyDevice(selectedDeviceId!!)
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Primary.copy(alpha = 0.15f),
@@ -239,7 +145,7 @@ fun SmartRemoteApp1(viewModel: RemoteViewModel = viewModel()) {
                         is RemoteState.ERROR -> (uiState as? RemoteState.ERROR)?.message?: "Something went wrong"
                         is RemoteState.RESULT -> viewModel.getExtractedMessage(uiState as? RemoteState.RESULT)
                     },
-                    style = MaterialTheme.typography.titleMedium.copy(
+                    style = MaterialTheme.typography.labelLarge.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     ),
@@ -286,7 +192,7 @@ fun SmartRemoteApp1(viewModel: RemoteViewModel = viewModel()) {
                         )
                     }
 
-                    Box(
+                    Button(
                         modifier = Modifier
                             .size(180.dp)
                             .clip(CircleShape)
@@ -295,25 +201,32 @@ fun SmartRemoteApp1(viewModel: RemoteViewModel = viewModel()) {
                                     colors = listOf(Primary, PrimaryDim)
                                 )
                             )
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            /*.clickable {
                                 if (selectedDeviceId == null) {
                                     scope.launch {
                                         snackbarHostState.showSnackbar("Please select a device first")
                                     }
                                     return@clickable
                                 }
-                                if (!hasPermission) {
-                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                } else {
-                                    if (uiState is RemoteState.IDLE || uiState is RemoteState.ERROR) {
-                                        viewModel.toggleListening(selectedDeviceId)
-                                    } else if (uiState is RemoteState.LISTENING) {
-                                        viewModel.toggleListening(selectedDeviceId)
-                                    }
+                                if (uiState is RemoteState.IDLE || uiState is RemoteState.ERROR) {
+                                    viewModel.toggleListening(selectedDeviceId)
+                                } else if (uiState is RemoteState.LISTENING) {
+                                    viewModel.toggleListening(selectedDeviceId)
                                 }
-                            },
-                        contentAlignment = Alignment.Center
+                            }*/,
+                        onClick = {
+                            if (selectedDeviceId == null) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Please select a device first")
+                                }
+                                return@Button
+                            }
+                            if (uiState is RemoteState.IDLE || uiState is RemoteState.ERROR) {
+                                viewModel.toggleListening(selectedDeviceId)
+                            } else if (uiState is RemoteState.LISTENING) {
+                                viewModel.toggleListening(selectedDeviceId)
+                            }
+                        }
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Mic,
@@ -356,7 +269,7 @@ fun SmartRemoteApp1(viewModel: RemoteViewModel = viewModel()) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeviceSelectionSheet(
+internal fun DeviceSelectionSheet(
     devices: List<RemoteDevice>,
     selectedDeviceId: String?,
     onDeviceSelect: (String) -> Unit,
@@ -433,7 +346,7 @@ fun DeviceSelectionSheet(
 }
 
 @Composable
-fun DeviceItem(
+internal fun DeviceItem(
     device: RemoteDevice,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -509,7 +422,7 @@ fun DeviceItem(
 }
 
 @Composable
-fun RenameDialog(
+internal fun RenameDialog(
     currentName: String,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
@@ -542,7 +455,7 @@ fun RenameDialog(
 }
 
 @Composable
-fun WaveformAnimation(isAnimating: Boolean) {
+internal fun WaveformAnimation(isAnimating: Boolean) {
     val staticHeights = remember {
         listOf(0.2f, 0.4f, 0.3f, 0.6f, 0.4f, 0.8f, 0.5f, 1f, 0.5f, 0.8f, 0.4f, 0.6f, 0.3f, 0.4f, 0.2f)
     }
@@ -581,7 +494,7 @@ fun WaveformAnimation(isAnimating: Boolean) {
 }
 
 @Composable
-fun QuickActionsCard(viewModel: RemoteViewModel) {
+internal fun QuickActionsCard(viewModel: RemoteViewModel) {
     Card(
         modifier = Modifier
             .padding(horizontal = 24.dp)
@@ -609,20 +522,26 @@ fun QuickActionsCard(viewModel: RemoteViewModel) {
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 val actions = listOf(
-                    Icons.Rounded.Home to "Home",
-                    Icons.AutoMirrored.Rounded.VolumeDown to "Vol Down",
-                    Icons.Rounded.Schedule to "Schedule",
-                    Icons.AutoMirrored.Rounded.VolumeUp to "Vol Up",
-                    Icons.Rounded.Settings to "Settings"
+                    "Home",
+                    "Vol Down",
+                    "Schedule",
+                    "Vol Up",
+                    "Settings"
                 )
 
-                actions.forEach { (icon, label) ->
+                actions.forEach { action ->
                     QuickActionButton(
-                        icon = icon,
-                        label = label
+                        icon = when(action){
+                            "Home" -> Icons.Rounded.Home
+                            "Vol Down" -> Icons.AutoMirrored.Rounded.VolumeDown
+                            "Schedule" -> Icons.Rounded.Schedule
+                            "Vol Up" -> Icons.AutoMirrored.Rounded.VolumeUp
+                            "Settings" -> Icons.Rounded.Settings
+                            else -> Icons.Rounded.Home
+                        },
+                        label = action
                     ) {
-                        // Action logic here
-                        viewModel.sendRemoteAction(icon)
+                        viewModel.sendRemoteAction(action)
                     }
                 }
             }
@@ -631,12 +550,11 @@ fun QuickActionsCard(viewModel: RemoteViewModel) {
 }
 
 @Composable
-fun QuickActionButton(
+internal fun QuickActionButton(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit
 ) {
-    val haptic = LocalHapticFeedback.current
     var isPressed by remember { mutableStateOf(false) }
 
     LaunchedEffect(isPressed) {
@@ -674,7 +592,6 @@ fun QuickActionButton(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     isPressed = true
                     onClick()
                 }
@@ -705,4 +622,3 @@ fun QuickActionButton(
         )
     }
 }
-
