@@ -151,6 +151,7 @@ fun SmartRemoteApp(viewModel: RemoteViewModel = viewModel()) {
                         DPadDirection.DOWN -> Icons.Rounded.KeyboardArrowDown
                         DPadDirection.LEFT -> Icons.AutoMirrored.Rounded.KeyboardArrowLeft
                         DPadDirection.RIGHT -> Icons.AutoMirrored.Rounded.KeyboardArrowRight
+                        DPadDirection.NONE-> null
                     }
                     viewModel.sendRemoteAction(icon)
                 },

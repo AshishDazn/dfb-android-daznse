@@ -11,6 +11,13 @@ object SocketEventsHelper {
     const val Home = "home"
     const val Schedule = "schedule"
     const val Settings = "settings"
+    const val Up = "up"
+    const val Down = "down"
+    const val Left = "left"
+    const val Right = "right"
+    const val Ok = "ok"
+    const val Back = "back"
+    const val Mute = "mute"
 
     fun audioStartEvent(deviceId: String?): String{
         return Gson().toJson(StartAudioEvent(deviceId = deviceId))

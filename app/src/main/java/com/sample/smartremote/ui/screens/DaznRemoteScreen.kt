@@ -1,18 +1,14 @@
 package com.sample.smartremote.ui.screens
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
@@ -24,11 +20,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -45,9 +38,12 @@ import com.sample.smartremote.ui.theme.Primary
 import com.sample.smartremote.ui.theme.SurfaceContainer
 import com.sample.smartremote.ui.theme.SurfaceContainerHighest
 import androidx.compose.ui.tooling.preview.Preview
+import com.sample.smartremote.ui.views.DpadView
+import com.sample.smartremote.ui.views.NeumorphicButton
+import com.sample.smartremote.ui.views.ProtrudingDpad
 
 enum class DPadDirection {
-    UP, DOWN, LEFT, RIGHT
+    UP, DOWN, LEFT, RIGHT,NONE
 }
 @Composable
 fun DaznRemoteScreen(
@@ -103,7 +99,7 @@ fun DaznRemoteScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Tv,
-                        contentDescription = null,
+                        contentDescription = "Select Device",
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
@@ -118,7 +114,7 @@ fun DaznRemoteScreen(
                     )
                     Icon(
                         imageVector = Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = null,
+                        contentDescription = "Device List",
                         tint = Color.White,
                         modifier = Modifier.size(20.dp)
                     )
@@ -158,7 +154,7 @@ fun DaznRemoteScreen(
                         onClose = onMicClick
                     )
                 } else {
-                    ProtrudingDpad(
+                    DpadView(
                         haptic = haptic,
                         onDirectionClick = onDirectionClick,
                         onOkClick = onOkClick
@@ -175,183 +171,21 @@ fun DaznRemoteScreen(
                 modifier = Modifier.padding(bottom = 80.dp)
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(48.dp)) {
-                    NeumorphicButton(icon = Icons.AutoMirrored.Rounded.ArrowBack, haptic = haptic, onClick = onBackClick)
-                    NeumorphicButton(icon = Icons.Rounded.Keyboard, haptic = haptic, onClick = onKeyboardClick)
+                    NeumorphicButton(icon = Icons.AutoMirrored.Rounded.ArrowBack, haptic = haptic, onClick = onBackClick, contentDescription = "Back")
+                    NeumorphicButton(icon = Icons.Rounded.Keyboard, haptic = haptic, onClick = onKeyboardClick, contentDescription = "Keyboard")
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(48.dp)) {
-                    NeumorphicButton(icon = Icons.AutoMirrored.Rounded.VolumeOff, haptic = haptic, onClick = onMuteClick)
+                    NeumorphicButton(icon = Icons.AutoMirrored.Rounded.VolumeOff, haptic = haptic, onClick = onMuteClick, contentDescription = "Mute")
                     NeumorphicButton(
                         icon = Icons.Rounded.Mic,
                         haptic = haptic,
                         onClick = onMicClick,
-                        isActive = isListening
+                        isActive = isListening,
+                        contentDescription = "Microphone"
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-fun ProtrudingDpad(
-    haptic: HapticFeedback,
-    onDirectionClick: (DPadDirection) -> Unit,
-    onOkClick: () -> Unit
-) {
-    val dpadSize = 260.dp
-    val okSize = 90.dp
-
-    Box(modifier = Modifier.size(dpadSize), contentAlignment = Alignment.Center) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .shadow(24.dp, CircleShape, spotColor = Color.Black)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0xFF2A2A30), Color(0xFF19191D)),
-                        center = Offset(0.3f, 0.3f)
-                    ),
-                    CircleShape
-                )
-                .border(2.dp, Color(0xFF4A4A52).copy(alpha = 0.3f), CircleShape)
-        )
-
-        Box(modifier = Modifier.fillMaxSize()) {
-            DpadQuadrant(
-                modifier = Modifier.align(Alignment.TopCenter),
-                icon = Icons.Rounded.KeyboardArrowUp,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.KeyboardTap)
-                    onDirectionClick(DPadDirection.UP) 
-                }
-            )
-            DpadQuadrant(
-                modifier = Modifier.align(Alignment.BottomCenter),
-                icon = Icons.Rounded.KeyboardArrowDown,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.KeyboardTap)
-                    onDirectionClick(DPadDirection.DOWN) 
-                }
-            )
-            DpadQuadrant(
-                modifier = Modifier.align(Alignment.CenterStart),
-                icon = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.KeyboardTap)
-                    onDirectionClick(DPadDirection.LEFT) 
-                }
-            )
-            DpadQuadrant(
-                modifier = Modifier.align(Alignment.CenterEnd),
-                icon = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.KeyboardTap)
-                    onDirectionClick(DPadDirection.RIGHT) 
-                }
-            )
-        }
-
-        val interactionSource = remember { MutableInteractionSource() }
-        val isPressed by interactionSource.collectIsPressedAsState()
-        val scale by animateFloatAsState(if (isPressed) 0.96f else 1f, label = "ok_scale")
-
-        Box(
-            modifier = Modifier
-                .size(okSize)
-                .scale(scale)
-                .shadow(16.dp, CircleShape, spotColor = Color.Black)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color(0xFF2A2A30), Color(0xFF15151A))
-                    ),
-                    CircleShape
-                )
-                .border(1.dp, Color(0xFF3A3A42), CircleShape)
-                .clip(CircleShape)
-                .clickable(interactionSource = interactionSource, indication = null) {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onOkClick()
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "OK",
-                color = Color(0xFF8A8A93),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-        }
-    }
-}
-
-@Composable
-fun DpadQuadrant(
-    modifier: Modifier,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = modifier
-            .size(100.dp)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color(0xFFE2E2E2),
-            modifier = Modifier.size(32.dp)
-        )
-    }
-}
-
-@Composable
-fun NeumorphicButton(
-    icon: ImageVector,
-    haptic: HapticFeedback,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    isActive: Boolean = false
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(targetValue = if (isPressed) 0.94f else 1f, label = "btn_scale")
-
-    val outerModifier = if (isActive) {
-        Modifier.border(2.dp, Color(0xFF3B82F6), CircleShape)
-    } else {
-        Modifier
-    }
-
-    Box(
-        modifier = modifier
-            .scale(scale)
-            .size(72.dp)
-            .then(outerModifier)
-            .shadow(12.dp, CircleShape, spotColor = Color.Black)
-            .background(
-                Brush.radialGradient(
-                    listOf(Color(0xFF2A2A30), Color(0xFF19191D)), center = Offset(0.3f, 0.3f)
-                ), CircleShape
-            )
-            .border(1.dp, Color(0xFF333338), CircleShape)
-            .clip(CircleShape)
-            .clickable(interactionSource = interactionSource, indication = null) {
-                haptic.performHapticFeedback(HapticFeedbackType.KeyboardTap)
-                onClick()
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (isActive) Color(0xFF3B82F6) else Color.White,
-            modifier = Modifier.size(24.dp)
-        )
     }
 }
 

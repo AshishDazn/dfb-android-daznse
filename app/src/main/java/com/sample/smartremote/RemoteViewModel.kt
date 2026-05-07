@@ -16,9 +16,16 @@ import com.sample.smartremote.data.RemoteDevice
 import com.sample.smartremote.data.RemoteState
 import com.sample.smartremote.data.SocketEventsHelper
 import com.sample.smartremote.data.SocketEventsHelper.EVENT_TV_LIST
+import com.sample.smartremote.data.SocketEventsHelper.Back
+import com.sample.smartremote.data.SocketEventsHelper.Down
 import com.sample.smartremote.data.SocketEventsHelper.Home
+import com.sample.smartremote.data.SocketEventsHelper.Left
+import com.sample.smartremote.data.SocketEventsHelper.Mute
+import com.sample.smartremote.data.SocketEventsHelper.Ok
+import com.sample.smartremote.data.SocketEventsHelper.Right
 import com.sample.smartremote.data.SocketEventsHelper.Schedule
 import com.sample.smartremote.data.SocketEventsHelper.Settings
+import com.sample.smartremote.data.SocketEventsHelper.Up
 import com.sample.smartremote.data.SocketEventsHelper.VolumeDown
 import com.sample.smartremote.data.SocketEventsHelper.VolumeUp
 import com.sample.smartremote.data.WebSocketResponse
@@ -30,6 +37,13 @@ import kotlinx.coroutines.launch
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 
 class RemoteViewModel : ViewModel() {
     private val audioService = AudioService()
@@ -64,6 +78,8 @@ class RemoteViewModel : ViewModel() {
                     val transcript = response.transcript ?: ""
                     _uiState.value = RemoteState.RESULT(transcript)
                     
+                    handleVoiceCommand(transcript)
+
                     viewModelScope.launch {
                         delay(2000)
                         _uiState.value = RemoteState.IDLE
@@ -73,13 +89,19 @@ class RemoteViewModel : ViewModel() {
 
                 when (response.event) {
                     EVENT_TV_LIST -> {
-                        val newDevices = response.devices?.map { device ->
+                        val devicesFromResponse = response.devices?.map { device ->
                             RemoteDevice(id = device.id, name = if (device.nickName.isNullOrEmpty()){
                                 "TV ${device.id.takeLast(4)}"
                             }else{
                                 device.nickName
                             })
                         } ?: emptyList()
+
+                        val newDevices = if (devicesFromResponse.size > 1) {
+                            listOf(RemoteDevice("__all__", "All Devices")) + devicesFromResponse
+                        } else {
+                            devicesFromResponse
+                        }
 
                         _devices.value = newDevices
                         handleDefaultDeviceSelection(_devices.value)
@@ -97,7 +119,25 @@ class RemoteViewModel : ViewModel() {
             }
         }
 
-        private fun handleDefaultDeviceSelection(deviceList: List<RemoteDevice>) {
+        private fun handleVoiceCommand(transcript: String) {
+        val command = transcript.lowercase()
+        when {
+            command.contains("home") -> sendRemoteAction(Icons.Rounded.Home)
+            command.contains("settings") -> sendRemoteAction(Icons.Rounded.Settings)
+            command.contains("volume up") || command.contains("increase volume") -> sendRemoteAction(Icons.AutoMirrored.Rounded.VolumeUp)
+            command.contains("volume down") || command.contains("decrease volume") -> sendRemoteAction(Icons.AutoMirrored.Rounded.VolumeDown)
+            command.contains("mute") -> sendRemoteAction(Icons.AutoMirrored.Rounded.VolumeOff)
+            command.contains("back") -> sendRemoteAction(Icons.AutoMirrored.Rounded.ArrowBack)
+            command.contains("ok") || command.contains("select") -> sendRemoteAction(Icons.Rounded.Check)
+            command.contains("up") -> sendRemoteAction(Icons.Rounded.KeyboardArrowUp)
+            command.contains("down") -> sendRemoteAction(Icons.Rounded.KeyboardArrowDown)
+            command.contains("left") -> sendRemoteAction(Icons.AutoMirrored.Rounded.KeyboardArrowLeft)
+            command.contains("right") -> sendRemoteAction(Icons.AutoMirrored.Rounded.KeyboardArrowRight)
+            command.contains("schedule") -> sendRemoteAction(Icons.Rounded.Schedule)
+        }
+    }
+
+    private fun handleDefaultDeviceSelection(deviceList: List<RemoteDevice>) {
             if (deviceList.isEmpty()) {
                 _selectedDeviceId.value = null
                 return
@@ -258,7 +298,7 @@ class RemoteViewModel : ViewModel() {
         webSocketService.sendEventData(SocketEventsHelper.identifyDeviceEvent(deviceId))
     }
 
-    fun sendRemoteAction(icon: ImageVector) {
+    fun sendRemoteAction(icon: ImageVector?) {
         val deviceId = selectedDeviceId.value ?: return
         when(icon){
             Icons.Rounded.Home-> {
@@ -276,7 +316,27 @@ class RemoteViewModel : ViewModel() {
             Icons.Rounded.Schedule-> {
                 webSocketService.sendEventData(SocketEventsHelper.sendRemoteAction(deviceId,Schedule))
             }
-
+            Icons.Rounded.KeyboardArrowUp -> {
+                webSocketService.sendEventData(SocketEventsHelper.sendRemoteAction(deviceId, Up))
+            }
+            Icons.Rounded.KeyboardArrowDown -> {
+                webSocketService.sendEventData(SocketEventsHelper.sendRemoteAction(deviceId, Down))
+            }
+            Icons.AutoMirrored.Rounded.KeyboardArrowLeft -> {
+                webSocketService.sendEventData(SocketEventsHelper.sendRemoteAction(deviceId, Left))
+            }
+            Icons.AutoMirrored.Rounded.KeyboardArrowRight -> {
+                webSocketService.sendEventData(SocketEventsHelper.sendRemoteAction(deviceId, Right))
+            }
+            Icons.Rounded.Check -> {
+                webSocketService.sendEventData(SocketEventsHelper.sendRemoteAction(deviceId, Ok))
+            }
+            Icons.AutoMirrored.Rounded.ArrowBack -> {
+                webSocketService.sendEventData(SocketEventsHelper.sendRemoteAction(deviceId, Back))
+            }
+            Icons.AutoMirrored.Rounded.VolumeOff -> {
+                webSocketService.sendEventData(SocketEventsHelper.sendRemoteAction(deviceId, Mute))
+            }
         }
     }
 }
