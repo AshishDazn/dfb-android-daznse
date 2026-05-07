@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -77,7 +78,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SmartRemoteApp(viewModel: RemoteViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
-    val statusText by viewModel.statusText.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val selectedDeviceId by viewModel.selectedDeviceId.collectAsState()
 
@@ -132,7 +132,6 @@ fun SmartRemoteApp(viewModel: RemoteViewModel = viewModel()) {
         Box(modifier = Modifier.padding(innerPadding)) {
             DaznRemoteScreen(
                 uiState = uiState,
-                statusText = statusText,
                 selectedDeviceName = selectedDevice?.name,
                 onMicClick = {
                     if (selectedDeviceId == null) {
@@ -142,7 +141,9 @@ fun SmartRemoteApp(viewModel: RemoteViewModel = viewModel()) {
                     } else if (!hasPermission) {
                         permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     } else {
-                        viewModel.toggleListening(selectedDeviceId)
+                        selectedDeviceId?.let {
+                            viewModel.toggleListening(it)
+                        }
                     }
                 },
                 onDirectionClick = { direction ->
@@ -161,8 +162,9 @@ fun SmartRemoteApp(viewModel: RemoteViewModel = viewModel()) {
                 onBackClick = {
                     viewModel.sendRemoteAction(Icons.AutoMirrored.Rounded.ArrowBack)
                 },
-                onKeyboardClick = {
-                    // Logic for keyboard
+                onHomeClick = {
+                    viewModel.sendRemoteAction(Icons.Rounded.Home)
+
                 },
                 onMuteClick = {
                     viewModel.sendRemoteAction(Icons.AutoMirrored.Rounded.VolumeOff)

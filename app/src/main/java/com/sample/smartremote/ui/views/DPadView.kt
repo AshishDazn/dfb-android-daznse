@@ -146,6 +146,17 @@ fun DpadView(
                         useCenter = true
                     )
                 }
+                //Multi-color Rim Glow
+                drawCircle(
+                    brush = Brush.sweepGradient(
+                        0.0f to Color(0xFF7B4397),
+                        0.5f to Color(0xFF866022),
+                        1.0f to Color(0xFF7B4397)
+                    ),
+                    radius = radius + 2.dp.toPx(),
+                    style = Stroke(width = 1.dp.toPx())
+
+                )
             },
         contentAlignment = Alignment.Center
     ) {

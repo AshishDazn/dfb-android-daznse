@@ -32,6 +32,7 @@ fun NeumorphicButton(
     haptic: HapticFeedback,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
+    isEnabled: Boolean = true,
     isActive: Boolean = false,
     contentDescription: String? = null
 ) {
@@ -59,9 +60,13 @@ fun NeumorphicButton(
                     listOf(Color(0xFF2A2A30), Color(0xFF19191D)), center = Offset(0.3f, 0.3f)
                 ), CircleShape
             )
-            .border(1.dp, Color(0xFF333338), CircleShape)
+            .border(1.dp, Color.Black, CircleShape)
             .clip(CircleShape)
-            .clickable(interactionSource = interactionSource, indication = null) {
+            .clickable(
+                enabled = isEnabled,
+                interactionSource = interactionSource,
+                indication = null
+            ) {
                 haptic.performHapticFeedback(HapticFeedbackType.KeyboardTap)
                 onClick()
             },
