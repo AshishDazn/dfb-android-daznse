@@ -90,10 +90,10 @@ fun DaznRemoteScreen(
     onHomeClick: () -> Unit,
     onMuteClick: () -> Unit,
     onHeaderClick: () -> Unit,
-    onIdentifyClick: () -> Unit
+    onIdentifyClick: () -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
-    val isListening = uiState is RemoteState.LISTENING || uiState is RemoteState.PROCESSING || uiState is RemoteState.RESULT
+    val isListening = (uiState is RemoteState.LISTENING) || (uiState is RemoteState.PROCESSING) || (uiState is RemoteState.RESULT)
 
     Box(
         modifier = Modifier
@@ -345,8 +345,9 @@ fun DeviceSelectionSheet(
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                         color = Color.White
                     )
+                    val realDevicesCount = devices.count { it.id != "__all__" }
                     Text(
-                        if (devices.isEmpty()) "No device available" else "${devices.size} devices available ",
+                        if (realDevicesCount == 0) "No device available" else "$realDevicesCount ${if (realDevicesCount == 1) "device" else "devices"} available ",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.7f)
                     )
@@ -362,9 +363,7 @@ fun DeviceSelectionSheet(
             Spacer(modifier = Modifier.height(32.dp))
 
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(
-                    12.dp
-                )
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(devices) { device ->
                     DeviceItem(
@@ -399,12 +398,16 @@ fun DeviceItem(
     onClick: () -> Unit,
     onRenameClick: () -> Unit
 ) {
+    val gold = Color(0xFF866022)
+    val purple = Color(0xFF7B4397)
+    val green = Color(0xFF79E99C)
+    val selectedGradient = Brush.linearGradient(listOf(purple, gold))
     Surface(
         onClick = onClick,
-        color = if (isSelected) Primary.copy(alpha = 0.15f) else SurfaceContainerHighest,
+        color = if (isSelected) Color.White.copy(alpha = 0.05f) else SurfaceContainerHighest,
         shape = RoundedCornerShape(20.dp),
         border = if (isSelected) {
-            androidx.compose.foundation.BorderStroke(1.dp, Primary.copy(alpha = 0.5f))
+            androidx.compose.foundation.BorderStroke(1.5.dp, selectedGradient)
         } else null
     ) {
         Row(
@@ -417,7 +420,7 @@ fun DeviceItem(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(if (isSelected) Primary else SurfaceContainer),
+                    .background(if (isSelected) green else SurfaceContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -438,7 +441,7 @@ fun DeviceItem(
                 Text(
                     if (isSelected) "Connected" else "Available",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (isSelected) Primary else Color.White.copy(alpha = 0.5f)
+                    color = if (isSelected) green else Color.White.copy(alpha = 0.5f)
                 )
             }
 
@@ -457,7 +460,7 @@ fun DeviceItem(
                 Icon(
                     imageVector = Icons.Rounded.CheckCircle,
                     contentDescription = "Selected",
-                    tint = Primary,
+                    tint = green,
                     modifier = Modifier.size(24.dp)
                 )
             }

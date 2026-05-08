@@ -85,12 +85,15 @@ class RemoteViewModel : ViewModel() {
                 when (response.event) {
                     EVENT_TV_LIST -> {
                         val devicesFromResponse = response.devices?.map { device ->
-                            RemoteDevice(id = device.id, name = if (device.nickName.isNullOrEmpty()){
-                                "TV ${device.id.takeLast(4)}"
-                            }else{
-                                device.nickName
-                            })
-                        } ?: emptyList()
+                            RemoteDevice(
+                                id = device.id,
+                                name = if (device.nickName.isNullOrEmpty()) {
+                                    "TV ${device.id.takeLast(4)}"
+                                } else {
+                                    device.nickName
+                                }
+                            )
+                        }?.filter { it.id != "__all__" } ?: emptyList()
 
                         val newDevices = if (devicesFromResponse.size > 1) {
                             listOf(RemoteDevice("__all__", "All Devices")) + devicesFromResponse
@@ -110,7 +113,7 @@ class RemoteViewModel : ViewModel() {
                     }
                 }
             } catch (e: Exception) {
-                Log.e("WebSocket", "Error parsing message", e)
+                Log.e("WebSocket", "Error parsing message: ${e.message}", e)
             }
         }
 
@@ -150,7 +153,7 @@ class RemoteViewModel : ViewModel() {
 
             if (!isCurrentSelectionValid) {
                 val allDevicesOption = deviceList.find { it.id == "__all__" }
-                if (deviceList.size > 1 && allDevicesOption != null) {
+                if ((deviceList.size > 1) && (allDevicesOption != null)) {
                     // More than one device (including __all__), default to __all__
                     _selectedDeviceId.value = "__all__"
                 } else {
@@ -251,6 +254,7 @@ class RemoteViewModel : ViewModel() {
                     webSocketService.sendAudioData(data)
                 }
             } catch (e: Exception) {
+                Log.e("Audio", "Recording failed", e)
                 _uiState.value = RemoteState.ERROR("Recording failed")
             }
         }
@@ -282,16 +286,6 @@ class RemoteViewModel : ViewModel() {
         super.onCleared()
         audioService.stopRecording()
         disconnect()
-    }
-
-    fun getRandomSuggestions(): String {
-        val listOfCommands = listOf(
-            "\'Play Red Bull TV\'",
-            "\'Go to Schedule\'",
-            "\'Play Playlist\'",
-            "\'Show me upcoming Bundesliga Matches\'"
-        )
-        return listOfCommands.random()
     }
 
     fun getExtractedMessage(result: String?): String {
