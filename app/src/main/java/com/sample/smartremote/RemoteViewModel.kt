@@ -244,20 +244,47 @@ class RemoteViewModel : ViewModel() {
         }
     }
 
+    private var lastAudioTimestamp = 0L
+    private val SILENCE_THRESHOLD = 500 // Threshold for 16-bit PCM
+    private val SILENCE_TIMEOUT_MS = 3000L
+
     private fun startListening(deviceId: String) {
         webSocketService.sendEventData(SocketEventsHelper.audioStartEvent(deviceId))
         _uiState.value = RemoteState.LISTENING
+        lastAudioTimestamp = System.currentTimeMillis()
 
         viewModelScope.launch {
             try {
                 audioService.startRecording { data ->
                     webSocketService.sendAudioData(data)
+                    
+                    // Silence detection logic
+                    if (isLoud(data)) {
+                        lastAudioTimestamp = System.currentTimeMillis()
+                    } else {
+                        if (System.currentTimeMillis() - lastAudioTimestamp > SILENCE_TIMEOUT_MS) {
+                            viewModelScope.launch {
+                                stopListening(deviceId)
+                            }
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("Audio", "Recording failed", e)
                 _uiState.value = RemoteState.ERROR("Recording failed")
             }
         }
+    }
+
+    private fun isLoud(data: ByteArray): Boolean {
+        // Convert byte array to short array (16-bit PCM)
+        for (i in 0 until data.size - 1 step 2) {
+            val sample = ((data[i + 1].toInt() shl 8) or (data[i].toInt() and 0xFF)).toShort()
+            if (Math.abs(sample.toInt()) > SILENCE_THRESHOLD) {
+                return true
+            }
+        }
+        return false
     }
 
     private fun stopListening(deviceId: String) {
