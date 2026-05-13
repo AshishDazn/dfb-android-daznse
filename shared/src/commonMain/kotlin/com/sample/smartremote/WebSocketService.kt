@@ -14,14 +14,9 @@ class WebSocketService {
     }
     private var session: DefaultClientWebSocketSession? = null
 
-    suspend fun connect(url: String) {
+    suspend fun connect(urlString: String) {
         disconnect()
-        session = client.webSocketSession(
-            method = HttpMethod.Get,
-            host = "your-websocket-host", // Replace with your actual host
-            port = 8080, // Replace with your actual port
-            path = url
-        )
+        session = client.webSocketSession(urlString)
     }
 
     suspend fun sendAudioData(data: ByteArray) {

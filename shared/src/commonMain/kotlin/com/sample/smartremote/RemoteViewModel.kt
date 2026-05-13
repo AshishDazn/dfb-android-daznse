@@ -1,12 +1,15 @@
 package com.sample.smartremote
 
-import com.sample.smartremote.data.RemoteDevice
-import com.sample.smartremote.data.RemoteState
-import com.sample.smartremote.data.SocketEventsHelper
+import com.sample.smartremote.data.*
 import com.sample.smartremote.data.SocketEventsHelper.EVENT_TV_LIST
-import com.sample.smartremote.data.WebSocketResponse
 import dev.icerock.moko.mvvm.viewmodel.ViewModel
 import io.github.aakira.napier.Napier
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,6 +20,11 @@ import kotlinx.serialization.json.Json
 
 class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
     private val webSocketService = WebSocketService()
+    private val httpClient = HttpClient {
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true })
+        }
+    }
 
     private val _uiState = MutableStateFlow<RemoteState>(RemoteState.IDLE)
     val uiState = _uiState.asStateFlow()
@@ -30,11 +38,16 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
     private val _selectedDeviceId = MutableStateFlow<String?>(null)
     val selectedDeviceId = _selectedDeviceId.asStateFlow()
 
-    init {
-        connectToWebSocket()
-    }
+    private val _isAuthorized = MutableStateFlow(false)
+    val isAuthorized = _isAuthorized.asStateFlow()
 
-    private fun connectToWebSocket() {
+    private val _isLoggingIn = MutableStateFlow(false)
+    val isLoggingIn = _isLoggingIn.asStateFlow()
+
+    private val _loginError = MutableStateFlow<String?>(null)
+    val loginError = _loginError.asStateFlow()
+
+    fun connect() {
         viewModelScope.launch {
             try {
                 webSocketService.connect("ws://63.178.32.34:3000/?clientType=remote&customerId=customer2")
@@ -47,8 +60,14 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
                 _uiState.value = RemoteState.ERROR(e.message)
                 Napier.e("WebSocket Failure", e)
                 delay(5000)
-                connectToWebSocket()
+                connect()
             }
+        }
+    }
+
+    fun disconnect() {
+        viewModelScope.launch {
+            webSocketService.disconnect()
         }
     }
 
@@ -79,6 +98,10 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
                     } ?: emptyList()
 
                     _devices.value = newDevices
+                    
+                    if (_selectedDeviceId.value == null && newDevices.isNotEmpty()) {
+                        _selectedDeviceId.value = newDevices.first().id
+                    }
                 }
                 else -> {
                     viewModelScope.launch {
@@ -90,6 +113,42 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
             }
         } catch (e: Exception) {
             Napier.e("Error parsing message", e)
+        }
+    }
+
+    fun signIn(email: String, password: String) {
+        viewModelScope.launch {
+            _isLoggingIn.value = true
+            _loginError.value = null
+            try {
+                val httpResponse = httpClient.post("https://cdn.stag.business.dazn.com/authentication/euc1/v1/signin") {
+                    contentType(ContentType.Application.Json)
+                    setBody(LoginRequest(
+                        email = email,
+                        password = password,
+                        platform = "dazn-se",
+                        deviceId = "TestDalsiEndpointDevice1"
+                    ))
+                }
+
+                if (httpResponse.status == HttpStatusCode.OK) {
+                    val response: LoginResponse = httpResponse.body()
+                    if (response.token != null) {
+                        _isAuthorized.value = true
+                        connect()
+                    } else {
+                        _loginError.value = "Login successful but token missing"
+                    }
+                } else {
+                    val errorBody = try { httpResponse.body<LoginResponse>().error } catch (e: Exception) { null }
+                    _loginError.value = errorBody ?: "Login failed: ${httpResponse.status.value}"
+                }
+            } catch (e: Exception) {
+                _loginError.value = e.message ?: "Unknown error"
+                Napier.e("Login error", e)
+            } finally {
+                _isLoggingIn.value = false
+            }
         }
     }
 
@@ -142,9 +201,7 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         audioService.stopRecording()
-        viewModelScope.launch {
-            webSocketService.disconnect()
-        }
+        disconnect()
     }
 
     fun getRandomSuggestions(): String {
@@ -174,8 +231,23 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
 
     fun sendRemoteAction(action: String) {
         val deviceId = selectedDeviceId.value ?: return
+        val command = when(action) {
+            "Home" -> SocketEventsHelper.Home
+            "Up" -> SocketEventsHelper.Up
+            "Down" -> SocketEventsHelper.Down
+            "Left" -> SocketEventsHelper.Left
+            "Right" -> SocketEventsHelper.Right
+            "Ok" -> SocketEventsHelper.Ok
+            "Back" -> SocketEventsHelper.Back
+            "Mute" -> SocketEventsHelper.Mute
+            "VolumeUp" -> SocketEventsHelper.VolumeUp
+            "VolumeDown" -> SocketEventsHelper.VolumeDown
+            "Schedule" -> SocketEventsHelper.Schedule
+            "Settings" -> SocketEventsHelper.Settings
+            else -> action
+        }
         viewModelScope.launch {
-            webSocketService.sendEventData(SocketEventsHelper.sendRemoteAction(deviceId, action))
+            webSocketService.sendEventData(SocketEventsHelper.sendRemoteAction(deviceId, command))
         }
     }
 }

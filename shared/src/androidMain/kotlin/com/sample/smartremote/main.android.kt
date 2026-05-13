@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 
 
 @Composable
-fun MainView() = Temp()//ChatAppWithScaffold()
+fun MainView() = SmartRemoteApp()
 
 @Preview
 @Composable

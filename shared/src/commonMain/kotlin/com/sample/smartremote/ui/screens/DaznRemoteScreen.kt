@@ -1,22 +1,11 @@
 package com.sample.smartremote.ui.screens
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -24,59 +13,60 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Mic
-import androidx.compose.material.icons.rounded.Tv
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sample.smartremote.R
 import com.sample.smartremote.data.RemoteDevice
 import com.sample.smartremote.data.RemoteState
-import com.sample.smartremote.ui.theme.Primary
-import com.sample.smartremote.ui.theme.SurfaceContainer
-import com.sample.smartremote.ui.theme.SurfaceContainerHighest
+import com.sample.smartremote.ui.Primary
+import com.sample.smartremote.ui.SurfaceContainer
+import com.sample.smartremote.ui.SurfaceContainerHighest
 import com.sample.smartremote.ui.views.DpadView
 import com.sample.smartremote.ui.views.NeumorphicButton
 import com.sample.smartremote.ui.views.WaveformAnimation
 
-
-enum class DPadDirection {
-    UP, DOWN, LEFT, RIGHT, NONE
+@Composable
+fun DaznBackground(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        0.0f to Color(0xFF866022),
+                        0.8f to Color.Transparent,
+                        center = Offset(160.dp.toPx(), 250.dp.toPx()),
+                        radius = 270.dp.toPx()
+                    ),
+                    center = Offset(160.dp.toPx(), 250.dp.toPx()),
+                    radius = 270.dp.toPx()
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        0.0f to Color(0xFF7B4397),
+                        0.8f to Color.Transparent,
+                        center = Offset(200.dp.toPx(), 250.dp.toPx()),
+                        radius = 270.dp.toPx()
+                    ),
+                    center = Offset(200.dp.toPx(), 250.dp.toPx()),
+                    radius = 270.dp.toPx()
+                )
+            }
+    )
 }
 
 @Composable
@@ -96,17 +86,10 @@ fun DaznRemoteScreen(
     val isListening = (uiState is RemoteState.LISTENING) || (uiState is RemoteState.PROCESSING) || (uiState is RemoteState.RESULT)
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.TopCenter
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.bg_background),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.FillBounds
-        )
+        DaznBackground()
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -114,7 +97,7 @@ fun DaznRemoteScreen(
                 .fillMaxWidth()
                 .padding(top = 16.dp)
         ) {
-            // -- Old Device Selection Header --
+            // -- Device Selection Header --
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -213,7 +196,7 @@ fun DaznRemoteScreen(
                         icon = Icons.Rounded.Home,
                         haptic = haptic,
                         onClick = onHomeClick,
-                        contentDescription = "Keyboard",
+                        contentDescription = "Home",
                         isEnabled = !isListening
                     )
                 }
@@ -273,9 +256,9 @@ fun ListeningCard(uiState: RemoteState) {
                 text = text,
                 color = Color.White,
                 fontSize = 16.sp,
-                modifier = Modifier.fillMaxWidth(), // Occupies full width to allow centering
+                modifier = Modifier.fillMaxWidth(),
                 fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center // <--- This centers the gravity of the text
+                textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -403,7 +386,10 @@ fun DeviceItem(
     val green = Color(0xFF79E99C)
     val selectedGradient = Brush.linearGradient(listOf(purple, gold))
     Surface(
-        onClick = onClick,
+        modifier = Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = LocalIndication.current
+        ) { onClick() },
         color = if (isSelected) Color.White.copy(alpha = 0.05f) else SurfaceContainerHighest,
         shape = RoundedCornerShape(20.dp),
         border = if (isSelected) {
@@ -506,22 +492,5 @@ fun RenameDialog(
         containerColor = SurfaceContainer,
         textContentColor = Color.White,
         titleContentColor = Color.White
-    )
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF000000)
-@Composable
-fun DaznRemoteScreenPreview() {
-    DaznRemoteScreen(
-        uiState = RemoteState.IDLE,
-        selectedDeviceName = "Living Room TV",
-        onMicClick = {},
-        onDirectionClick = {},
-        onOkClick = {},
-        onBackClick = {},
-        onHomeClick = {},
-        onMuteClick = {},
-        onHeaderClick = {},
-        onIdentifyClick = {}
     )
 }

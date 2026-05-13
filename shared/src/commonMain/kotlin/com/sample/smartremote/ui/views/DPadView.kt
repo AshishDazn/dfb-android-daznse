@@ -1,13 +1,14 @@
 package com.sample.smartremote.ui.views
 
-import android.widget.Toast
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -20,11 +21,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -37,10 +34,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sample.smartremote.ui.screens.DPadDirection
@@ -66,10 +60,10 @@ fun getTouchedQuadrant(offset: Offset, size: Float): DPadDirection {
 fun DpadView(
     haptic: HapticFeedback,
     onDirectionClick: (DPadDirection) -> Unit,
-    onOkClick: () -> Unit) {
+    onOkClick: () -> Unit
+) {
 
     val dpadSize = 260.dp
-    val okSize = 90.dp
     var activeQuadrant by remember { mutableStateOf(DPadDirection.NONE) }
 
     // Animation for the "pressed" depth (the button sinks slightly)
@@ -175,7 +169,10 @@ fun DpadView(
                     shape = CircleShape
                 )
                 .border(1.dp, Color.Black, CircleShape)
-                .clickable {
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = LocalIndication.current
+                ) {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onOkClick()
                 },
