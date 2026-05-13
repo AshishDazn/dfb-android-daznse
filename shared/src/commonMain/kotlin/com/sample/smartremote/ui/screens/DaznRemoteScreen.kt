@@ -386,10 +386,7 @@ fun DeviceItem(
     val green = Color(0xFF79E99C)
     val selectedGradient = Brush.linearGradient(listOf(purple, gold))
     Surface(
-        modifier = Modifier.clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = LocalIndication.current
-        ) { onClick() },
+        onClick = onClick,
         color = if (isSelected) Color.White.copy(alpha = 0.05f) else SurfaceContainerHighest,
         shape = RoundedCornerShape(20.dp),
         border = if (isSelected) {

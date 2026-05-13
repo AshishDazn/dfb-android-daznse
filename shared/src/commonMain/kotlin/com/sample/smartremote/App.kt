@@ -16,16 +16,14 @@ fun SmartRemoteApp(viewModel: RemoteViewModel = getViewModel(Unit, viewModelFact
     val isLoggingIn by viewModel.isLoggingIn.collectAsState()
     val loginError by viewModel.loginError.collectAsState()
 
-    CompositionLocalProvider(LocalIndication provides null) {
-        if (!isAuthorized) {
-            AuthorizationScreen(
-                onSignIn = { email, password -> viewModel.signIn(email, password) },
-                isLoading = isLoggingIn,
-                errorMessage = loginError
-            )
-        } else {
-            SmartRemoteContent(viewModel)
-        }
+    if (!isAuthorized) {
+        AuthorizationScreen(
+            onSignIn = { email, password -> viewModel.signIn(email, password) },
+            isLoading = isLoggingIn,
+            errorMessage = loginError
+        )
+    } else {
+        SmartRemoteContent(viewModel)
     }
 }
 

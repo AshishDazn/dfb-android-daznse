@@ -171,7 +171,7 @@ fun DpadView(
                 .border(1.dp, Color.Black, CircleShape)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = LocalIndication.current
+                    indication = null
                 ) {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onOkClick()

@@ -38,7 +38,7 @@ kotlin {
             implementation(libs.compose.ui)
             //implementation(compose.compiler.auto)
             //implementation(compose.components.uiToolingPreview)
-            implementation(libs.compose.uiToolingPreview)
+            //implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.animation)
             implementation(libs.compose.animation.graphics)
             implementation(libs.compose.runtime)
