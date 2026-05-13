@@ -1,6 +1,15 @@
 package com.sample.smartremote
 
+import android.app.Application
+import android.content.Context
 import android.util.Log
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import com.sample.smartremote.data.LoginRequest
+import com.sample.smartremote.data.LoginResponse
+import java.io.IOException
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
@@ -15,7 +24,6 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.sample.smartremote.data.RemoteDevice
@@ -43,10 +51,16 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 
-class RemoteViewModel : ViewModel() {
+import com.sample.smartremote.BuildConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+class RemoteViewModel(application: Application) : androidx.lifecycle.AndroidViewModel(application) {
     private val audioService = AudioService()
     private val webSocketService = WebSocketService()
     private val gson = Gson()
+
+    private val prefs = application.getSharedPreferences("smart_remote_prefs", Context.MODE_PRIVATE)
 
     private val _uiState = MutableStateFlow<RemoteState>(RemoteState.IDLE)
     val uiState = _uiState.asStateFlow()
@@ -56,6 +70,18 @@ class RemoteViewModel : ViewModel() {
 
     private val _selectedDeviceId = MutableStateFlow<String?>(null)
     val selectedDeviceId = _selectedDeviceId.asStateFlow()
+
+    private val _isAuthorized = MutableStateFlow(prefs.getBoolean("is_authorized", false))
+    val isAuthorized = _isAuthorized.asStateFlow()
+
+    private val _loginError = MutableStateFlow<String?>(null)
+    val loginError = _loginError.asStateFlow()
+
+    private val _isLoggingIn = MutableStateFlow(false)
+    val isLoggingIn = _isLoggingIn.asStateFlow()
+
+    private val client = OkHttpClient()
+    private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     private var isManualDisconnect = false
 
@@ -219,14 +245,16 @@ class RemoteViewModel : ViewModel() {
     }
 
     init {
-        connect()
+        if (_isAuthorized.value) {
+            connect()
+        }
     }
 
     fun connect() {
         isManualDisconnect = false
         // Removed updating _statusText to "Connecting..." to keep the suggestion visible
         webSocketService.connect(
-            "ws://63.178.32.34:3000/?clientType=remote&customerId=customer2",
+            "${BuildConfig.WS_URL}?clientType=remote&customerId=customer2",
             wsListener
         )
     }
@@ -268,6 +296,57 @@ class RemoteViewModel : ViewModel() {
 
     fun selectDevice(id: String) {
         _selectedDeviceId.value = id
+    }
+
+    fun signIn(email: String, password: String) {
+        viewModelScope.launch {
+            _isLoggingIn.value = true
+            _loginError.value = null
+
+            val loginRequest = LoginRequest(
+                email = email,
+                password = password,
+                platform = "dazn-se",
+                deviceId = "TestDalsiEndpointDevice1" // Using the provided deviceId
+            )
+
+            val requestBody = gson.toJson(loginRequest).toRequestBody(jsonMediaType)
+            val request = Request.Builder()
+                .url("${BuildConfig.BASE_URL}authentication/euc1/v1/signin")
+                .post(requestBody)
+                .build()
+
+            try {
+                val loginResponse = withContext(Dispatchers.IO) {
+                    client.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            val responseBody = response.body?.string()
+                            gson.fromJson(responseBody, LoginResponse::class.java)
+                        } else {
+                            throw IOException("Login failed: ${response.code}")
+                        }
+                    }
+                }
+
+                if (loginResponse.token != null) {
+                    prefs.edit().putString("auth_token", loginResponse.token).apply()
+                    setAuthorized(true)
+                    connect()
+                } else {
+                    _loginError.value = "Token not found in response"
+                }
+            } catch (e: Exception) {
+                _loginError.value = e.message ?: "Unknown error"
+                Log.e("Auth", "Login failed", e)
+            } finally {
+                _isLoggingIn.value = false
+            }
+        }
+    }
+
+    fun setAuthorized(authorized: Boolean) {
+        _isAuthorized.value = authorized
+        prefs.edit().putBoolean("is_authorized", authorized).apply()
     }
 
     fun renameDevice(id: String, newName: String) {

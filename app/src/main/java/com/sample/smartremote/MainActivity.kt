@@ -45,6 +45,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sample.smartremote.ui.screens.AuthorizationScreen
 import com.sample.smartremote.ui.screens.DPadDirection
 import com.sample.smartremote.ui.screens.DaznRemoteScreen
 import com.sample.smartremote.ui.screens.DeviceSelectionSheet
@@ -77,6 +78,24 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartRemoteApp(viewModel: RemoteViewModel = viewModel()) {
+    val isAuthorized by viewModel.isAuthorized.collectAsState()
+    val isLoggingIn by viewModel.isLoggingIn.collectAsState()
+    val loginError by viewModel.loginError.collectAsState()
+
+    if (!isAuthorized) {
+        AuthorizationScreen(
+            onSignIn = { email, password -> viewModel.signIn(email, password) },
+            isLoading = isLoggingIn,
+            errorMessage = loginError
+        )
+    } else {
+        SmartRemoteContent(viewModel)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SmartRemoteContent(viewModel: RemoteViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val selectedDeviceId by viewModel.selectedDeviceId.collectAsState()
