@@ -75,6 +75,11 @@ import com.sample.smartremote.ui.views.NeumorphicButton
 import com.sample.smartremote.ui.views.WaveformAnimation
 
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+
 enum class DPadDirection {
     UP, DOWN, LEFT, RIGHT, NONE
 }
@@ -174,22 +179,31 @@ fun DaznRemoteScreen(
             }
 
             // -- Dynamic Content Area --
-            Box(
+            AnimatedContent(
+                targetState = isListening,
+                transitionSpec = {
+                    fadeIn() togetherWith fadeOut()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(340.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isListening) {
-                    ListeningCard(
-                        uiState = uiState
-                    )
-                } else {
-                    DpadView(
-                        haptic = haptic,
-                        onDirectionClick = onDirectionClick,
-                        onOkClick = onOkClick
-                    )
+                label = "RemoteContentTransition"
+            ) { listening ->
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (listening) {
+                        ListeningCard(
+                            uiState = uiState
+                        )
+                    } else {
+                        DpadView(
+                            haptic = haptic,
+                            onDirectionClick = onDirectionClick,
+                            onOkClick = onOkClick
+                        )
+                    }
                 }
             }
 

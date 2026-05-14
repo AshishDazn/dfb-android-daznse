@@ -44,7 +44,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sample.smartremote.ui.screens.AuthorizationScreen
 import com.sample.smartremote.ui.screens.DPadDirection
 import com.sample.smartremote.ui.screens.DaznRemoteScreen
@@ -52,6 +51,8 @@ import com.sample.smartremote.ui.screens.DeviceSelectionSheet
 import com.sample.smartremote.ui.theme.SmartRemoteTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+import org.koin.androidx.compose.koinViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,27 +70,28 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SmartRemoteTheme {
-                SmartRemoteApp()
+                SmartRemoteAppMain()
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SmartRemoteApp(viewModel: RemoteViewModel = viewModel()) {
-    val isAuthorized by viewModel.isAuthorized.collectAsState()
-    val isLoggingIn by viewModel.isLoggingIn.collectAsState()
-    val loginError by viewModel.loginError.collectAsState()
+fun SmartRemoteAppMain() {
+    val authViewModel: AuthViewModel = koinViewModel()
+    val isAuthorized by authViewModel.isAuthorized.collectAsState()
+    val isLoggingIn by authViewModel.isLoggingIn.collectAsState()
+    val loginError by authViewModel.loginError.collectAsState()
 
     if (!isAuthorized) {
         AuthorizationScreen(
-            onSignIn = { email, password -> viewModel.signIn(email, password) },
+            onSignIn = { email, password -> authViewModel.signIn(email, password) },
             isLoading = isLoggingIn,
             errorMessage = loginError
         )
     } else {
-        SmartRemoteContent(viewModel)
+        val remoteViewModel: RemoteViewModel = koinViewModel()
+        SmartRemoteContent(remoteViewModel)
     }
 }
 
@@ -109,7 +111,7 @@ fun SmartRemoteContent(viewModel: RemoteViewModel) {
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_START) {
+            if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.connect()
             } else if (event == Lifecycle.Event.ON_STOP) {
                 viewModel.disconnect()
