@@ -26,7 +26,7 @@ class AudioService {
     // Noise Suppression State
     private var noiseFloor = 0.0
     private var calibrationSamples = 0
-    private val CALIBRATION_COUNT = 10 // ~250ms at 4096 buffer size / 16kHz
+    private val CALIBRATION_COUNT = 20 // ~500ms at 4096 buffer size / 16kHz
     private var prevSample = 0.toShort()
 
     // HPF State (120Hz cutoff at 16kHz)
@@ -94,7 +94,7 @@ class AudioService {
         }
 
         val output = ShortArray(buffer.size)
-        val gateThreshold = noiseFloor * 1.5
+        val gateThreshold = noiseFloor * 1.5 // Relaxed gate
         
         // 2. Simple AGC Gain Calculation
         if (inputRms > gateThreshold && inputRms > 0) {
@@ -179,7 +179,7 @@ class AudioService {
     private fun cleanup() {
         try {
             audioRecord?.apply {
-                if (state == AudioRecord.STATE_INITIALIZED) {
+                if (recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                     stop()
                 }
                 release()

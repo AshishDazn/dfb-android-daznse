@@ -1,5 +1,11 @@
 package com.sample.smartremote.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -56,6 +62,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -90,7 +97,7 @@ fun DaznRemoteScreen(
     onHomeClick: () -> Unit,
     onMuteClick: () -> Unit,
     onHeaderClick: () -> Unit,
-    onIdentifyClick: () -> Unit,
+    onIdentifyClick: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
     val isListening = (uiState is RemoteState.LISTENING) || (uiState is RemoteState.PROCESSING) || (uiState is RemoteState.RESULT)
@@ -114,7 +121,6 @@ fun DaznRemoteScreen(
                 .fillMaxWidth()
                 .padding(top = 16.dp)
         ) {
-            // -- Old Device Selection Header --
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -137,14 +143,16 @@ fun DaznRemoteScreen(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = selectedDeviceName ?: "Select Device",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
-                        ),
-                        color = Color.White
-                    )
+                    Column {
+                        Text(
+                            text = selectedDeviceName ?: "Select Device",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp
+                            ),
+                            color = Color.White
+                        )
+                    }
                     Icon(
                         imageVector = Icons.Rounded.KeyboardArrowDown,
                         contentDescription = "Device List",
@@ -153,22 +161,24 @@ fun DaznRemoteScreen(
                     )
                 }
 
-                if (selectedDeviceName != null && selectedDeviceName != "All Devices") {
-                    Button(
-                        onClick = onIdentifyClick,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White.copy(alpha = 0.1f),
-                            contentColor = Color.White
-                        ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            "Identify",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.Bold
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (selectedDeviceName != null && selectedDeviceName != "All Devices") {
+                        Button(
+                            onClick = onIdentifyClick,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White.copy(alpha = 0.1f),
+                                contentColor = Color.White
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                "Identify",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.Bold
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
@@ -199,7 +209,7 @@ fun DaznRemoteScreen(
             Column(
                 verticalArrangement = Arrangement.spacedBy(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(bottom = 80.dp)
+                modifier = Modifier.padding(bottom = 40.dp)
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(90.dp)) {
                     NeumorphicButton(
@@ -234,6 +244,8 @@ fun DaznRemoteScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
@@ -242,6 +254,19 @@ fun DaznRemoteScreen(
 fun ListeningCard(uiState: RemoteState) {
     val borderGradient = Brush.linearGradient(listOf(Color(0xFF552A8E), Color(0xFFC02C66)))
     val micGradient = Brush.linearGradient(listOf(Color(0xFFB5F057), Color(0xFF45B079)))
+
+    val infiniteTransition = rememberInfiniteTransition(label = "micPulse")
+    val micScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "micScale"
+    )
+
+    val scale = if (uiState is RemoteState.LISTENING) micScale else 1f
 
     Box(
         modifier = Modifier
@@ -284,6 +309,7 @@ fun ListeningCard(uiState: RemoteState) {
                 modifier = Modifier
                     .size(100.dp)
                     .align(Alignment.CenterHorizontally)
+                    .graphicsLayer(scaleX = scale, scaleY = scale)
                     .shadow(elevation = 4.dp, shape = CircleShape, clip = true)
                     .background(Color(0xFF0D1211), CircleShape),
                 contentAlignment = Alignment.Center
@@ -309,6 +335,7 @@ fun ListeningCard(uiState: RemoteState) {
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

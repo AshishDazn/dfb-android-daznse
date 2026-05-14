@@ -35,6 +35,7 @@ import com.sample.smartremote.data.SocketEventsHelper.Up
 import com.sample.smartremote.data.SocketEventsHelper.VolumeDown
 import com.sample.smartremote.data.SocketEventsHelper.VolumeUp
 import com.sample.smartremote.data.WebSocketResponse
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -237,28 +238,59 @@ class RemoteViewModel : ViewModel() {
     }
 
     fun toggleListening(deviceId: String) {
-        if (_uiState.value is RemoteState.LISTENING) {
-            stopListening(deviceId)
-        } else {
-            startListening(deviceId)
+        val currentState = _uiState.value
+        when (currentState) {
+            is RemoteState.LISTENING, is RemoteState.PROCESSING -> {
+                stopListening(deviceId)
+            }
+            is RemoteState.RESULT -> {
+                stopListening(deviceId)
+                _uiState.value = RemoteState.IDLE
+            }
+            else -> {
+                startListening(deviceId)
+            }
         }
     }
 
     private var lastAudioTimestamp = 0L
-    private val SILENCE_THRESHOLD = 500 // Threshold for 16-bit PCM
-    private val SILENCE_TIMEOUT_MS = 3000L
+    private val SILENCE_THRESHOLD = 600 // Relaxed
+    private val SILENCE_TIMEOUT_MS = 2000L // Reduced from 5000L to 2000L
+
+    private var lastLevel = 0f
+    private var steadyLevelStartTime = 0L
+    private val LEVEL_STABILITY_THRESHOLD = 0.01f // More sensitive to changes (1%)
+    private var recordingJob: Job? = null
 
     private fun startListening(deviceId: String) {
+        recordingJob?.cancel()
         webSocketService.sendEventData(SocketEventsHelper.audioStartEvent(deviceId))
         _uiState.value = RemoteState.LISTENING
         lastAudioTimestamp = System.currentTimeMillis()
+        steadyLevelStartTime = System.currentTimeMillis()
+        lastLevel = 0f
 
-        viewModelScope.launch {
+        recordingJob = viewModelScope.launch {
             try {
                 audioService.startRecording { data ->
                     webSocketService.sendAudioData(data)
+
+                    // Audio Level calculation
+                    val currentLevel = calculateLevel(data)
                     
-                    // Silence detection logic
+                    // Steady-state level detection (e.g. background hum)
+                    if (Math.abs(currentLevel - lastLevel) < LEVEL_STABILITY_THRESHOLD) {
+                        if (System.currentTimeMillis() - steadyLevelStartTime > SILENCE_TIMEOUT_MS) {
+                            viewModelScope.launch {
+                                stopListening(deviceId)
+                            }
+                        }
+                    } else {
+                        steadyLevelStartTime = System.currentTimeMillis()
+                    }
+                    lastLevel = currentLevel
+
+                    // Silence detection logic (Absolute silence)
                     if (isLoud(data)) {
                         lastAudioTimestamp = System.currentTimeMillis()
                     } else {
@@ -274,6 +306,16 @@ class RemoteViewModel : ViewModel() {
                 _uiState.value = RemoteState.ERROR("Recording failed")
             }
         }
+    }
+
+    private fun calculateLevel(data: ByteArray): Float {
+        var sum = 0f
+        for (i in 0 until data.size - 1 step 2) {
+            val sample = ((data[i + 1].toInt() shl 8) or (data[i].toInt() and 0xFF)).toShort()
+            sum += Math.abs(sample.toInt())
+        }
+        val avg = sum / (data.size / 2)
+        return (avg / Short.MAX_VALUE).coerceIn(0f, 1f)
     }
 
     private fun isLoud(data: ByteArray): Boolean {
