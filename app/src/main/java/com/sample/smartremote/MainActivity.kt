@@ -24,9 +24,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            SmartRemoteTheme {
-                SmartRemoteApp()
-            }
+            SmartRemoteApp()
         }
 
         verifyAppPermissions()

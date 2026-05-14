@@ -20,6 +20,7 @@ import kotlinx.serialization.json.Json
 
 class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
     private val webSocketService = WebSocketService()
+    private val settings = createSettings()
     private val httpClient = HttpClient {
         install(ContentNegotiation) {
             json(Json { ignoreUnknownKeys = true })
@@ -38,7 +39,7 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
     private val _selectedDeviceId = MutableStateFlow<String?>(null)
     val selectedDeviceId = _selectedDeviceId.asStateFlow()
 
-    private val _isAuthorized = MutableStateFlow(false)
+    private val _isAuthorized = MutableStateFlow(settings.getBoolean("is_authorized", false))
     val isAuthorized = _isAuthorized.asStateFlow()
 
     private val _isLoggingIn = MutableStateFlow(false)
@@ -46,6 +47,12 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
 
     private val _loginError = MutableStateFlow<String?>(null)
     val loginError = _loginError.asStateFlow()
+
+    init {
+        if (_isAuthorized.value) {
+            connect()
+        }
+    }
 
     fun connect() {
         viewModelScope.launch {
@@ -134,6 +141,8 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
                 if (httpResponse.status == HttpStatusCode.OK) {
                     val response: LoginResponse = httpResponse.body()
                     if (response.token != null) {
+                        settings.putString("auth_token", response.token)
+                        settings.putBoolean("is_authorized", true)
                         _isAuthorized.value = true
                         connect()
                     } else {

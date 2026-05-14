@@ -31,9 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sample.smartremote.data.RemoteDevice
 import com.sample.smartremote.data.RemoteState
-import com.sample.smartremote.ui.Primary
-import com.sample.smartremote.ui.SurfaceContainer
-import com.sample.smartremote.ui.SurfaceContainerHighest
+import com.sample.smartremote.ui.theme.Primary
+import com.sample.smartremote.ui.theme.SurfaceContainer
+import com.sample.smartremote.ui.theme.SurfaceContainerHighest
 import com.sample.smartremote.ui.views.DpadView
 import com.sample.smartremote.ui.views.NeumorphicButton
 import com.sample.smartremote.ui.views.WaveformAnimation
