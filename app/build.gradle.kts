@@ -72,8 +72,11 @@ dependencies {
     implementation(project(":shared"))
 
     /* ----- AndroidX Core ----- */
+    implementation(libs.androidx.compose.runtime)
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
+    implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.activity.compose)
 
     /* ----- AndroidX Compose ----- */
     implementation(platform(libs.androidx.compose.bom))
@@ -95,7 +98,7 @@ dependencies {
 
     /* ----- Testing ----- */
     testImplementation(libs.junit)
-
+    testImplementation(libs.mockito.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -38,35 +38,14 @@ import com.sample.smartremote.ui.views.DpadView
 import com.sample.smartremote.ui.views.NeumorphicButton
 import com.sample.smartremote.ui.views.WaveformAnimation
 
-@Composable
-fun DaznBackground(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .drawBehind {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        0.0f to Color(0xFF866022),
-                        0.8f to Color.Transparent,
-                        center = Offset(160.dp.toPx(), 250.dp.toPx()),
-                        radius = 270.dp.toPx()
-                    ),
-                    center = Offset(160.dp.toPx(), 250.dp.toPx()),
-                    radius = 270.dp.toPx()
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        0.0f to Color(0xFF7B4397),
-                        0.8f to Color.Transparent,
-                        center = Offset(200.dp.toPx(), 250.dp.toPx()),
-                        radius = 270.dp.toPx()
-                    ),
-                    center = Offset(200.dp.toPx(), 250.dp.toPx()),
-                    radius = 270.dp.toPx()
-                )
-            }
-    )
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+
+enum class DPadDirection {
+    UP, DOWN, LEFT, RIGHT, NONE
 }
 
 @Composable
@@ -157,22 +136,31 @@ fun DaznRemoteScreen(
             }
 
             // -- Dynamic Content Area --
-            Box(
+            AnimatedContent(
+                targetState = isListening,
+                transitionSpec = {
+                    fadeIn() togetherWith fadeOut()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(340.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isListening) {
-                    ListeningCard(
-                        uiState = uiState
-                    )
-                } else {
-                    DpadView(
-                        haptic = haptic,
-                        onDirectionClick = onDirectionClick,
-                        onOkClick = onOkClick
-                    )
+                label = "RemoteContentTransition"
+            ) { listening ->
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (listening) {
+                        ListeningCard(
+                            uiState = uiState
+                        )
+                    } else {
+                        DpadView(
+                            haptic = haptic,
+                            onDirectionClick = onDirectionClick,
+                            onOkClick = onOkClick
+                        )
+                    }
                 }
             }
 
