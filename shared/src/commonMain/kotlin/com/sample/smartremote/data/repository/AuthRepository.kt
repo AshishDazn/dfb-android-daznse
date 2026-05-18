@@ -1,5 +1,6 @@
 package com.sample.smartremote.data.repository
 
+import com.sample.smartremote.data.Config
 import com.sample.smartremote.data.LoginRequest
 import com.sample.smartremote.data.LoginResponse
 import com.sample.smartremote.data.SecurePreferences
@@ -12,18 +13,18 @@ import kotlinx.coroutines.withContext
 
 class AuthRepository(
     private val securePreferences: SecurePreferences,
-    private val httpClient: HttpClient
+    private val httpClient: HttpClient,
 ) {
     suspend fun signIn(email: String, password: String): Result<String> = withContext(Dispatchers.Default) {
         val loginRequest = LoginRequest(
             email = email,
             password = password,
             platform = "dazn-se",
-            deviceId = "TestDalsiEndpointDevice1"
+            deviceId = "TestDalsiEndpointDevice1",
         )
 
         try {
-            val response = httpClient.post("https://cdn.stag.business.dazn.com/authentication/euc1/v1/signin") {
+            val response = httpClient.post(Config.AUTH_URL) {
                 contentType(ContentType.Application.Json)
                 setBody(loginRequest)
             }

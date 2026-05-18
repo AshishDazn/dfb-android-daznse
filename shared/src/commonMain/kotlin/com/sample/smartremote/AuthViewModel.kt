@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val _isAuthorized = MutableStateFlow(authRepository.isAuthorized())
@@ -16,7 +16,7 @@ class AuthViewModel(
     private val _loginError = MutableStateFlow<String?>(null)
     val loginError = _loginError.asStateFlow()
 
-    private val _isLoggingIn = MutableStateFlow(false)
+    private val _isLoggingIn = MutableStateFlow(value = false)
     val isLoggingIn = _isLoggingIn.asStateFlow()
 
     fun signIn(email: String, password: String) {

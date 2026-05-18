@@ -6,6 +6,11 @@ import kotlinx.serialization.json.Json
 
 object SocketEventsHelper {
 
+    private val json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
+
     const val EVENT_TV_LIST = "tv_list"
     const val EVENT_NICK_NAME = "set_nickname"
     const val VolumeUp = "volumeup"
@@ -22,23 +27,23 @@ object SocketEventsHelper {
     const val Mute = "mute"
 
     fun audioStartEvent(deviceId: String?): String {
-        return Json.encodeToString(StartAudioEvent(deviceId = deviceId))
+        return json.encodeToString(StartAudioEvent(deviceId = deviceId))
     }
 
     fun audioEndEvent(deviceId: String?): String {
-        return Json.encodeToString(EndAudioEndEvent(deviceId = deviceId))
+        return json.encodeToString(EndAudioEndEvent(deviceId = deviceId))
     }
 
     fun identifyDeviceEvent(deviceId: String?): String {
-        return Json.encodeToString(IdentifyDeviceEvent(deviceId = deviceId))
+        return json.encodeToString(IdentifyDeviceEvent(deviceId = deviceId))
     }
 
     fun renameDevice(deviceId: String, newName: String): String {
-        return Json.encodeToString(SetDeviceNickName(deviceId = deviceId, nickName = newName, type = EVENT_NICK_NAME))
+        return json.encodeToString(SetDeviceNickName(deviceId = deviceId, nickName = newName, type = EVENT_NICK_NAME))
     }
 
     fun sendRemoteAction(deviceId: String, command: String): String {
-        return Json.encodeToString(SendRemoteAction(deviceId = deviceId, cmd = command))
+        return json.encodeToString(SendRemoteAction(deviceId = deviceId, cmd = command))
     }
 }
 

@@ -2,7 +2,6 @@ package com.sample.smartremote
 
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.sample.smartremote.data.*
-import com.sample.smartremote.data.SocketEventsHelper.EVENT_TV_LIST
 import com.sample.smartremote.data.repository.AuthRepository
 import com.sample.smartremote.data.repository.RemoteRepository
 import com.sample.smartremote.logic.ActionHandler
@@ -17,15 +16,11 @@ class RemoteViewModel(
     private val remoteRepository: RemoteRepository,
     private val authRepository: AuthRepository,
     private val actionHandler: ActionHandler,
-    private val audioService: AudioService
+    private val audioService: AudioService,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RemoteState>(RemoteState.IDLE)
     val uiState = _uiState.asStateFlow()
-
-    private val _statusText = MutableStateFlow(getRandomSuggestions())
-    val statusText = _statusText.asStateFlow()
-
     val devices = remoteRepository.devices
     val selectedDeviceId = remoteRepository.selectedDeviceId
 
@@ -51,10 +46,14 @@ class RemoteViewModel(
                 if (transcript != null) {
                     val message = getExtractedMessage(transcript)
                     _uiState.value = RemoteState.RESULT(message)
-                    handleVoiceCommand(message)
+                    if (transcript.isNotEmpty()) {
+                        handleVoiceCommand(message)
+                    }
 
                     delay(2000)
-                    _uiState.value = RemoteState.IDLE
+                    if (_uiState.value is RemoteState.RESULT) {
+                        _uiState.value = RemoteState.IDLE
+                    }
                     remoteRepository.clearTranscript()
                 }
             }
@@ -82,7 +81,7 @@ class RemoteViewModel(
             }
             result.onFailure { error ->
                 _loginError.value = error.message ?: "Unknown error"
-                Napier.e("Login error", error)
+                Napier.e(message = "[${Config.LOG_TAG}] Login error", throwable = error, tag = Config.LOG_TAG)
             }
             _isLoggingIn.value = false
         }
@@ -108,8 +107,11 @@ class RemoteViewModel(
                     }
                 }
             } catch (e: Exception) {
-                Napier.e("Recording failed", e)
-                _uiState.value = RemoteState.ERROR("Recording failed")
+                Napier.e(message = "[${Config.LOG_TAG}] Recording failed", throwable = e, tag = Config.LOG_TAG)
+                val fallback = "Sorry, I didn’t catch that. Please try again."
+                _uiState.value = RemoteState.RESULT(fallback)
+                delay(2000)
+                _uiState.value = RemoteState.IDLE
             }
         }
     }

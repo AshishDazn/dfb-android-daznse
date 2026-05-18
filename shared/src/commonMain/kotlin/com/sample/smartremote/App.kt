@@ -3,6 +3,7 @@ package com.sample.smartremote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.sample.smartremote.ui.screens.*
+import com.sample.smartremote.ui.views.DPadDirection
 import org.koin.compose.koinInject
 import kotlinx.coroutines.launch
 
@@ -23,7 +24,7 @@ fun SmartRemoteApp() {
             AuthorizationScreen(
                 onSignIn = { email, password -> viewModel.signIn(email, password) },
                 isLoading = isLoggingIn,
-                errorMessage = loginError
+                errorMessage = loginError,
             )
         } else {
             SmartRemoteContent(viewModel)
@@ -34,6 +35,7 @@ fun SmartRemoteApp() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartRemoteContent(viewModel: RemoteViewModel) {
+    val permissionManager: PermissionManager = koinInject()
     val uiState by viewModel.uiState.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val selectedDeviceId by viewModel.selectedDeviceId.collectAsState()
@@ -44,15 +46,20 @@ fun SmartRemoteContent(viewModel: RemoteViewModel) {
 
     val selectedDevice = devices.find { it.id == selectedDeviceId }
 
-    DaznRemoteScreen(
-        uiState = uiState,
-        selectedDeviceName = selectedDevice?.name,
-        onMicClick = {
-            selectedDeviceId?.let {
-                viewModel.toggleListening(it)
-            }
-        },
-        onDirectionClick = { direction ->
+    permissionManager.withAudioPermission { hasPermission, requestPermission ->
+        DaznRemoteScreen(
+            uiState = uiState,
+            selectedDeviceName = selectedDevice?.name,
+            onMicClick = {
+                if (hasPermission) {
+                    selectedDeviceId?.let {
+                        viewModel.toggleListening(it)
+                    }
+                } else {
+                    requestPermission()
+                }
+            },
+            onDirectionClick = { direction ->
             val action = when (direction) {
                 DPadDirection.UP -> "Up"
                 DPadDirection.DOWN -> "Down"
@@ -69,8 +76,9 @@ fun SmartRemoteContent(viewModel: RemoteViewModel) {
         onHeaderClick = { showDeviceSheet = true },
         onIdentifyClick = {
             selectedDeviceId?.let { viewModel.identifyDevice(it) }
-        }
+        },
     )
+}
 
     if (showDeviceSheet) {
         DeviceSelectionSheet(

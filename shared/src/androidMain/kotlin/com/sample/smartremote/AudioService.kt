@@ -7,6 +7,7 @@ import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
+import com.sample.smartremote.data.Config
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +40,7 @@ actual class AudioService {
                 )
 
                 if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
-                    Napier.e("AudioRecord initialization failed")
+                    Napier.e(message = "[${Config.LOG_TAG}] AudioRecord initialization failed", tag = Config.LOG_TAG)
                     return@launch
                 }
 
@@ -56,7 +57,7 @@ actual class AudioService {
                     }
                 }
             } catch (e: Exception) {
-                Napier.e("Error during recording", e)
+                Napier.e(message = "[${Config.LOG_TAG}] Error during recording", throwable = e, tag = Config.LOG_TAG)
             } finally {
                 cleanup()
             }
@@ -69,19 +70,19 @@ actual class AudioService {
         if (NoiseSuppressor.isAvailable()) {
             noiseSuppressor = NoiseSuppressor.create(sessionId)
             noiseSuppressor?.enabled = true
-            Napier.d("NoiseSuppressor enabled")
+            Napier.d(message = "[${Config.LOG_TAG}] NoiseSuppressor enabled", tag = Config.LOG_TAG)
         }
 
         if (AcousticEchoCanceler.isAvailable()) {
             echoCanceler = AcousticEchoCanceler.create(sessionId)
             echoCanceler?.enabled = true
-            Napier.d("AcousticEchoCanceler enabled")
+            Napier.d(message = "[${Config.LOG_TAG}] AcousticEchoCanceler enabled", tag = Config.LOG_TAG)
         }
 
         if (AutomaticGainControl.isAvailable()) {
             gainControl = AutomaticGainControl.create(sessionId)
             gainControl?.enabled = true
-            Napier.d("AutomaticGainControl enabled")
+            Napier.d(message = "[${Config.LOG_TAG}] AutomaticGainControl enabled", tag = Config.LOG_TAG)
         }
     }
 
@@ -98,7 +99,7 @@ actual class AudioService {
                 release()
             }
         } catch (e: Exception) {
-            Napier.e("Error cleaning up AudioRecord", e)
+            Napier.e(message = "[${Config.LOG_TAG}] Error cleaning up AudioRecord", throwable = e, tag = Config.LOG_TAG)
         }
         audioRecord = null
 

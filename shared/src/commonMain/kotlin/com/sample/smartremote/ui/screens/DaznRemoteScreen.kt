@@ -1,6 +1,9 @@
 package com.sample.smartremote.ui.screens
 
-import androidx.compose.foundation.LocalIndication
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,9 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -34,19 +35,10 @@ import com.sample.smartremote.data.RemoteState
 import com.sample.smartremote.ui.theme.Primary
 import com.sample.smartremote.ui.theme.SurfaceContainer
 import com.sample.smartremote.ui.theme.SurfaceContainerHighest
+import com.sample.smartremote.ui.views.DPadDirection
 import com.sample.smartremote.ui.views.DpadView
 import com.sample.smartremote.ui.views.NeumorphicButton
 import com.sample.smartremote.ui.views.WaveformAnimation
-
-
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-
-enum class DPadDirection {
-    UP, DOWN, LEFT, RIGHT, NONE
-}
 
 @Composable
 fun DaznRemoteScreen(
@@ -66,7 +58,7 @@ fun DaznRemoteScreen(
 
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.TopCenter
+        contentAlignment = Alignment.TopCenter,
     ) {
         DaznBackground()
 
@@ -120,10 +112,10 @@ fun DaznRemoteScreen(
                         onClick = onIdentifyClick,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White.copy(alpha = 0.1f),
-                            contentColor = Color.White
+                            contentColor = Color.White,
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
                     ) {
                         Text(
                             "Identify",
@@ -335,14 +327,14 @@ fun DeviceSelectionSheet(
             Spacer(modifier = Modifier.height(32.dp))
 
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(devices) { device ->
                     DeviceItem(
                         device = device,
                         isSelected = device.id == selectedDeviceId,
                         onClick = { onDeviceSelect(device.id) },
-                        onRenameClick = { deviceToRename = device }
+                        onRenameClick = { deviceToRename = device },
                     )
                 }
             }

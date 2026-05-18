@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -37,9 +37,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sample.smartremote.ui.screens.DPadDirection
+import com.sample.smartremote.ui.views.DPadDirection
 import kotlin.math.abs
 import kotlin.math.sqrt
+import kotlinx.coroutines.delay
+
+enum class DPadDirection {
+    UP, DOWN, LEFT, RIGHT, NONE
+}
 
 fun getTouchedQuadrant(offset: Offset, size: Float): DPadDirection {
     val center = size / 2
@@ -65,6 +70,15 @@ fun DpadView(
 
     val dpadSize = 260.dp
     var activeQuadrant by remember { mutableStateOf(DPadDirection.NONE) }
+
+    LaunchedEffect(activeQuadrant) {
+        if (activeQuadrant != DPadDirection.NONE) {
+            while (true) {
+                delay(200)
+                onDirectionClick(activeQuadrant)
+            }
+        }
+    }
 
     // Animation for the "pressed" depth (the button sinks slightly)
     val elevation by animateDpAsState(if (activeQuadrant != DPadDirection.NONE) 2.dp else 12.dp)
@@ -195,28 +209,28 @@ fun DPadIcons(active: DPadDirection) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         Icon(
-            Icons.Default.KeyboardArrowUp, null,
+            Icons.Rounded.KeyboardArrowUp, null,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 16.dp),
             tint = Color.White.copy(alpha = if (active == DPadDirection.UP) activeAlpha else inactiveAlpha)
         )
         Icon(
-            Icons.Default.KeyboardArrowDown, null,
+            Icons.Rounded.KeyboardArrowDown, null,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 16.dp),
             tint = Color.White.copy(alpha = if (active == DPadDirection.DOWN) activeAlpha else inactiveAlpha)
         )
         Icon(
-            Icons.Default.KeyboardArrowLeft, null,
+            Icons.AutoMirrored.Rounded.KeyboardArrowLeft, null,
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .padding(start = 16.dp),
             tint = Color.White.copy(alpha = if (active == DPadDirection.LEFT) activeAlpha else inactiveAlpha)
         )
         Icon(
-            Icons.Default.KeyboardArrowRight, null,
+            Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 16.dp),

@@ -1,6 +1,7 @@
 package com.sample.smartremote.data.repository
 
 import com.sample.smartremote.WebSocketService
+import com.sample.smartremote.data.Config
 import com.sample.smartremote.data.RemoteDevice
 import com.sample.smartremote.data.SocketEventsHelper
 import com.sample.smartremote.data.WebSocketResponse
@@ -18,6 +19,8 @@ class RemoteRepository(
     private val webSocketService: WebSocketService,
     private val authRepository: AuthRepository
 ) {
+    private val json = Json { ignoreUnknownKeys = true }
+
     private val _devices = MutableStateFlow<List<RemoteDevice>>(emptyList())
     val devices = _devices.asStateFlow()
 
@@ -31,29 +34,28 @@ class RemoteRepository(
 
     fun connect(scope: CoroutineScope) {
         isManualDisconnect = false
-        val viewerId = getViewerIdFromToken() ?: "customer2"
+        val viewerId = getViewerIdFromToken() ?: Config.DEFAULT_VIEWER_ID
         scope.launch {
             try {
-                // Note: WS_URL should ideally come from a config provider
-                val wsUrl = "ws://63.178.32.34:3000/"
+                val wsUrl = Config.WS_URL
                 webSocketService.connect("${wsUrl}?clientType=remote&customerId=$viewerId")
                 webSocketService.receive().collect { text ->
                     handleMessage(text)
                 }
             } catch (e: Exception) {
                 if (!isManualDisconnect) {
-                    Napier.e("WebSocket connection failed: ${e.message}", e)
+                    Napier.e(message = "[${Config.LOG_TAG}] WebSocket connection failed: ${e.message}", throwable = e, tag = Config.LOG_TAG)
                 } else {
-                    Napier.d("WebSocket disconnected manually")
+                    Napier.d(message = "[${Config.LOG_TAG}] WebSocket disconnected manually", tag = Config.LOG_TAG)
                 }
             }
         }
     }
 
     private fun handleMessage(text: String) {
-        Napier.d("WebSocket Message: $text")
+        Napier.d(message = "[${Config.LOG_TAG}] WebSocket Response: $text", tag = Config.LOG_TAG)
         try {
-            val response = Json { ignoreUnknownKeys = true }.decodeFromString<WebSocketResponse>(text)
+            val response = json.decodeFromString<WebSocketResponse>(text)
             
             if (response.type == "final_transcript") {
                 _onTranscriptReceived.value = response.transcript
@@ -64,7 +66,7 @@ class RemoteRepository(
                 handleDeviceList(response)
             }
         } catch (e: Exception) {
-            Napier.e("Error parsing message: ${e.message}", e)
+            Napier.e(message = "[${Config.LOG_TAG}] Error parsing message: ${e.message}", throwable = e, tag = Config.LOG_TAG)
         }
     }
 
@@ -79,7 +81,7 @@ class RemoteRepository(
             val jsonObject = Json.parseToJsonElement(decodedString).jsonObject
             jsonObject["viewerId"]?.jsonPrimitive?.content
         } catch (e: Exception) {
-            Napier.e("Error decoding token: ${e.message}")
+            Napier.e(message = "[${Config.LOG_TAG}] Error decoding token: ${e.message}", tag = Config.LOG_TAG)
             null
         }
     }

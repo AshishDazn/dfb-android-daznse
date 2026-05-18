@@ -1,6 +1,7 @@
 package com.sample.smartremote.di
 
 import com.sample.smartremote.AudioService
+import com.sample.smartremote.PermissionManager
 import com.sample.smartremote.RemoteViewModel
 import com.sample.smartremote.WebSocketService
 import com.sample.smartremote.data.repository.AuthRepository
@@ -39,6 +40,7 @@ val commonModule = module {
     }
     single { WebSocketService() }
     single { AudioService() }
+    single { PermissionManager() }
     single { ActionHandler() }
     single { AuthRepository(get(), get()) }
     single { RemoteRepository(get(), get()) }
