@@ -1,5 +1,7 @@
 package com.sample.smartremote
 
+import com.sample.smartremote.data.Config
+import io.github.aakira.napier.Napier
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.get
 import platform.AVFAudio.AVAudioEngine
@@ -49,8 +51,9 @@ actual class AudioService actual constructor() {
             audioEngine.prepare()
             audioEngine.startAndReturnError(null)
             isRecording = true
+            Napier.d(message = "[${Config.LOG_TAG}] iOS AudioEngine started", tag = Config.LOG_TAG)
         } catch (e: Exception) {
-            // Log error
+            Napier.e(message = "[${Config.LOG_TAG}] iOS Recording failed", throwable = e, tag = Config.LOG_TAG)
         }
     }
     
