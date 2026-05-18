@@ -155,6 +155,7 @@ fun DaznRemoteScreen(
                             uiState = uiState
                         )
                     } else {
+                        DpadBackgroundGlow(Modifier.fillMaxSize())
                         DpadView(
                             haptic = haptic,
                             onDirectionClick = onDirectionClick,

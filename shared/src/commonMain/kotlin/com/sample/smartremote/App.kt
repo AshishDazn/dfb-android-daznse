@@ -3,8 +3,7 @@ package com.sample.smartremote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.sample.smartremote.ui.screens.*
-import dev.icerock.moko.mvvm.compose.getViewModel
-import dev.icerock.moko.mvvm.compose.viewModelFactory
+import org.koin.compose.koinInject
 import kotlinx.coroutines.launch
 
 import com.sample.smartremote.ui.theme.SmartRemoteTheme
@@ -13,10 +12,7 @@ import com.sample.smartremote.ui.theme.SmartRemoteTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartRemoteApp() {
-    val viewModel: RemoteViewModel = getViewModel(
-        key = Unit,
-        factory = viewModelFactory { RemoteViewModel(AudioService()) }
-    )
+    val viewModel: RemoteViewModel = koinInject()
 
     SmartRemoteTheme {
         val isAuthorized by viewModel.isAuthorized.collectAsState()

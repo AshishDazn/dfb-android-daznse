@@ -1,37 +1,8 @@
 package com.sample.smartremote.data
 
-import android.content.Context
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
-
-class SecurePreferences(context: Context) {
-    private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
-
-    private val sharedPreferences = EncryptedSharedPreferences.create(
-        "secure_smart_remote_prefs",
-        masterKeyAlias,
-        context,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
-
-    fun saveAuthToken(token: String) {
-        sharedPreferences.edit().putString(KEY_AUTH_TOKEN, token).apply()
-    }
-
-    fun getAuthToken(): String? {
-        return sharedPreferences.getString(KEY_AUTH_TOKEN, null)
-    }
-
-    fun clearAuthToken() {
-        sharedPreferences.edit().remove(KEY_AUTH_TOKEN).apply()
-    }
-
-    fun isAuthorized(): Boolean {
-        return getAuthToken() != null
-    }
-
-    companion object {
-        private const val KEY_AUTH_TOKEN = "auth_token"
-    }
+interface SecurePreferences {
+    fun saveAuthToken(token: String)
+    fun getAuthToken(): String?
+    fun clearAuthToken()
+    fun isAuthorized(): Boolean
 }

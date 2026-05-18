@@ -1,31 +1,24 @@
 package com.sample.smartremote
 
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.sample.smartremote.data.*
 import com.sample.smartremote.data.SocketEventsHelper.EVENT_TV_LIST
+import com.sample.smartremote.data.repository.AuthRepository
+import com.sample.smartremote.data.repository.RemoteRepository
+import com.sample.smartremote.logic.ActionHandler
 import dev.icerock.moko.mvvm.viewmodel.ViewModel
 import io.github.aakira.napier.Napier
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 
-class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
-    private val webSocketService = WebSocketService()
-    private val settings = createSettings()
-    private val httpClient = HttpClient {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
-    }
+class RemoteViewModel(
+    private val remoteRepository: RemoteRepository,
+    private val authRepository: AuthRepository,
+    private val actionHandler: ActionHandler,
+    private val audioService: AudioService
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RemoteState>(RemoteState.IDLE)
     val uiState = _uiState.asStateFlow()
@@ -33,13 +26,10 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
     private val _statusText = MutableStateFlow(getRandomSuggestions())
     val statusText = _statusText.asStateFlow()
 
-    private val _devices = MutableStateFlow<List<RemoteDevice>>(emptyList())
-    val devices = _devices.asStateFlow()
+    val devices = remoteRepository.devices
+    val selectedDeviceId = remoteRepository.selectedDeviceId
 
-    private val _selectedDeviceId = MutableStateFlow<String?>(null)
-    val selectedDeviceId = _selectedDeviceId.asStateFlow()
-
-    private val _isAuthorized = MutableStateFlow(settings.getBoolean("is_authorized", false))
+    private val _isAuthorized = MutableStateFlow(authRepository.isAuthorized())
     val isAuthorized = _isAuthorized.asStateFlow()
 
     private val _isLoggingIn = MutableStateFlow(false)
@@ -52,74 +42,32 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
         if (_isAuthorized.value) {
             connect()
         }
+        observeTranscripts()
+    }
+
+    private fun observeTranscripts() {
+        viewModelScope.launch {
+            remoteRepository.onTranscriptReceived.collect { transcript ->
+                if (transcript != null) {
+                    val message = getExtractedMessage(transcript)
+                    _uiState.value = RemoteState.RESULT(message)
+                    handleVoiceCommand(message)
+
+                    delay(2000)
+                    _uiState.value = RemoteState.IDLE
+                    remoteRepository.clearTranscript()
+                }
+            }
+        }
     }
 
     fun connect() {
-        viewModelScope.launch {
-            try {
-                webSocketService.connect("ws://63.178.32.34:3000/?clientType=remote&customerId=customer2")
-                webSocketService.receive()
-                    .onEach { text ->
-                        handleWebSocketMessage(text)
-                    }
-                    .launchIn(viewModelScope)
-            } catch (e: Exception) {
-                _uiState.value = RemoteState.ERROR(e.message)
-                Napier.e("WebSocket Failure", e)
-                delay(5000)
-                connect()
-            }
-        }
+        remoteRepository.connect(viewModelScope)
     }
 
     fun disconnect() {
         viewModelScope.launch {
-            webSocketService.disconnect()
-        }
-    }
-
-    private fun handleWebSocketMessage(text: String) {
-        Napier.d("WebSocket Message: $text")
-        try {
-            val response = Json.decodeFromString<WebSocketResponse>(text)
-
-            if (response.type == "final_transcript") {
-                val transcript = response.transcript ?: ""
-                _uiState.value = RemoteState.RESULT(transcript)
-
-                viewModelScope.launch {
-                    delay(2000)
-                    _uiState.value = RemoteState.IDLE
-                }
-                return
-            }
-
-            when (response.event) {
-                EVENT_TV_LIST -> {
-                    val newDevices = response.devices?.map { device ->
-                        RemoteDevice(id = device.id, name = if (device.nickName.isNullOrEmpty()) {
-                            "TV ${device.id.takeLast(4)}"
-                        } else {
-                            device.nickName
-                        })
-                    } ?: emptyList()
-
-                    _devices.value = newDevices
-                    
-                    if (_selectedDeviceId.value == null && newDevices.isNotEmpty()) {
-                        _selectedDeviceId.value = newDevices.first().id
-                    }
-                }
-                else -> {
-                    viewModelScope.launch {
-                        if (_uiState.value is RemoteState.PROCESSING) {
-                            _uiState.value = RemoteState.IDLE
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Napier.e("Error parsing message", e)
+            remoteRepository.disconnect()
         }
     }
 
@@ -127,37 +75,16 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
         viewModelScope.launch {
             _isLoggingIn.value = true
             _loginError.value = null
-            try {
-                val httpResponse = httpClient.post("https://cdn.stag.business.dazn.com/authentication/euc1/v1/signin") {
-                    contentType(ContentType.Application.Json)
-                    setBody(LoginRequest(
-                        email = email,
-                        password = password,
-                        platform = "dazn-se",
-                        deviceId = "TestDalsiEndpointDevice1"
-                    ))
-                }
-
-                if (httpResponse.status == HttpStatusCode.OK) {
-                    val response: LoginResponse = httpResponse.body()
-                    if (response.token != null) {
-                        settings.putString("auth_token", response.token)
-                        settings.putBoolean("is_authorized", true)
-                        _isAuthorized.value = true
-                        connect()
-                    } else {
-                        _loginError.value = "Login successful but token missing"
-                    }
-                } else {
-                    val errorBody = try { httpResponse.body<LoginResponse>().error } catch (e: Exception) { null }
-                    _loginError.value = errorBody ?: "Login failed: ${httpResponse.status.value}"
-                }
-            } catch (e: Exception) {
-                _loginError.value = e.message ?: "Unknown error"
-                Napier.e("Login error", e)
-            } finally {
-                _isLoggingIn.value = false
+            val result = authRepository.signIn(email, password)
+            result.onSuccess {
+                _isAuthorized.value = true
+                connect()
             }
+            result.onFailure { error ->
+                _loginError.value = error.message ?: "Unknown error"
+                Napier.e("Login error", error)
+            }
+            _isLoggingIn.value = false
         }
     }
 
@@ -171,16 +98,17 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
 
     private fun startListening(deviceId: String?) {
         viewModelScope.launch {
-            webSocketService.sendEventData(SocketEventsHelper.audioStartEvent(deviceId))
+            remoteRepository.sendEvent(SocketEventsHelper.audioStartEvent(deviceId))
             _uiState.value = RemoteState.LISTENING
 
             try {
                 audioService.startRecording { data ->
                     viewModelScope.launch {
-                        webSocketService.sendAudioData(data)
+                        remoteRepository.sendAudioData(data)
                     }
                 }
             } catch (e: Exception) {
+                Napier.e("Recording failed", e)
                 _uiState.value = RemoteState.ERROR("Recording failed")
             }
         }
@@ -188,53 +116,26 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
 
     private fun stopListening(deviceId: String?) {
         viewModelScope.launch {
-            webSocketService.sendEventData(SocketEventsHelper.audioEndEvent(deviceId))
+            remoteRepository.sendEvent(SocketEventsHelper.audioEndEvent(deviceId))
             audioService.stopRecording()
             _uiState.value = RemoteState.PROCESSING
         }
     }
 
     fun selectDevice(id: String) {
-        _selectedDeviceId.value = id
+        remoteRepository.selectDevice(id)
     }
 
     fun renameDevice(id: String, newName: String) {
-        _devices.value = _devices.value.map {
-            if (it.id == id) it.copy(name = newName) else it
-        }
+        remoteRepository.renameDeviceLocal(id, newName)
         viewModelScope.launch {
-            webSocketService.sendEventData(SocketEventsHelper.renameDevice(deviceId = id, newName = newName))
-        }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        audioService.stopRecording()
-        disconnect()
-    }
-
-    fun getRandomSuggestions(): String {
-        val listOfCommands = listOf(
-            "\'Play Red Bull TV\'",
-            "\'Go to Schedule\'",
-            "\'Play Playlist\'",
-            "\'Show me upcoming Bundesliga Matches\'"
-        )
-        return listOfCommands.random()
-    }
-
-    fun getExtractedMessage(result: RemoteState.RESULT?): String {
-        val defaultMessage = "Sorry, I didn’t catch that. Please try again."
-        return if (result?.transcript.isNullOrEmpty()) {
-            defaultMessage
-        } else {
-            result.transcript
+            remoteRepository.sendEvent(SocketEventsHelper.renameDevice(deviceId = id, newName = newName))
         }
     }
 
     fun identifyDevice(deviceId: String) {
         viewModelScope.launch {
-            webSocketService.sendEventData(SocketEventsHelper.identifyDeviceEvent(deviceId))
+            remoteRepository.sendEvent(SocketEventsHelper.identifyDeviceEvent(deviceId))
         }
     }
 
@@ -256,7 +157,48 @@ class RemoteViewModel(private val audioService: AudioService) : ViewModel() {
             else -> action
         }
         viewModelScope.launch {
-            webSocketService.sendEventData(SocketEventsHelper.sendRemoteAction(deviceId, command))
+            remoteRepository.sendEvent(SocketEventsHelper.sendRemoteAction(deviceId, command))
         }
+    }
+
+    private fun sendRemoteActionByIcon(icon: ImageVector?) {
+        val deviceId = selectedDeviceId.value ?: return
+        val command = actionHandler.mapIconToCommand(icon)
+        if (command != null) {
+            viewModelScope.launch {
+                remoteRepository.sendEvent(SocketEventsHelper.sendRemoteAction(deviceId, command))
+            }
+        }
+    }
+
+    private fun handleVoiceCommand(transcript: String) {
+        val icon = actionHandler.mapVoiceCommandToIcon(transcript)
+        if (icon != null) {
+            sendRemoteActionByIcon(icon)
+        }
+    }
+
+    private fun getExtractedMessage(transcript: String?): String {
+        return if (transcript.isNullOrEmpty()) {
+            "Sorry, I didn’t catch that. Please try again."
+        } else {
+            transcript
+        }
+    }
+
+    fun getRandomSuggestions(): String {
+        val listOfCommands = listOf(
+            "\'Play Red Bull TV\'",
+            "\'Go to Schedule\'",
+            "\'Play Playlist\'",
+            "\'Show me upcoming Bundesliga Matches\'"
+        )
+        return listOfCommands.random()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        audioService.stopRecording()
+        disconnect()
     }
 }

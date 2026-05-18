@@ -2,7 +2,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.androidApplication)
-    //alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.kotlinCompose)
 }
@@ -71,39 +70,12 @@ android {
 dependencies {
     implementation(project(":shared"))
 
-    /* ----- AndroidX Core ----- */
-    implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
+    
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
-    implementation(libs.androidx.security.crypto)
-    implementation(libs.androidx.core.ktx)
-
-    /* ----- AndroidX Compose ----- */
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.core.splashscreen)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material3.windowSizeClass)
-
-    implementation(libs.androidx.material.icons.extended)
 
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodelCompose)
-    implementation(libs.androidx.lifecycle.runtimeCompose)
-
-    implementation(libs.okhttp)
-    implementation(libs.gson)
-
-    /* ----- Testing ----- */
-    testImplementation(libs.junit)
-    testImplementation(libs.mockito.core)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

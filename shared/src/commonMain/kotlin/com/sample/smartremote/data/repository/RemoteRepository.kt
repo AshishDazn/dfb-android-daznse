@@ -1,25 +1,22 @@
 package com.sample.smartremote.data.repository
 
-import android.util.Base64
-import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.JsonObject
-import com.sample.smartremote.BuildConfig
 import com.sample.smartremote.WebSocketService
 import com.sample.smartremote.data.RemoteDevice
 import com.sample.smartremote.data.SocketEventsHelper
 import com.sample.smartremote.data.WebSocketResponse
+import io.github.aakira.napier.Napier
+import io.ktor.util.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import java.nio.charset.Charset
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class RemoteRepository(
     private val webSocketService: WebSocketService,
-    private val authRepository: AuthRepository,
-    private val gson: Gson
+    private val authRepository: AuthRepository
 ) {
     private val _devices = MutableStateFlow<List<RemoteDevice>>(emptyList())
     val devices = _devices.asStateFlow()
@@ -32,52 +29,43 @@ class RemoteRepository(
 
     private var isManualDisconnect = false
 
-    private val wsListener = object : WebSocketListener() {
-        override fun onOpen(webSocket: WebSocket, response: Response) {
-            Log.d("WebSocket:", "Connected")
-        }
-
-        override fun onMessage(webSocket: WebSocket, text: String) {
-            Log.d("WebSocket:", "Message: $text")
+    fun connect(scope: CoroutineScope) {
+        isManualDisconnect = false
+        val viewerId = getViewerIdFromToken() ?: "customer2"
+        scope.launch {
             try {
-                val response = gson.fromJson(text, WebSocketResponse::class.java)
-                
-                if (response.type == "final_transcript") {
-                    _onTranscriptReceived.value = response.transcript
-                    return
-                }
-
-                if (response.event == SocketEventsHelper.EVENT_TV_LIST) {
-                    handleDeviceList(response)
+                // Note: WS_URL should ideally come from a config provider
+                val wsUrl = "ws://63.178.32.34:3000/"
+                webSocketService.connect("${wsUrl}?clientType=remote&customerId=$viewerId")
+                webSocketService.receive().collect { text ->
+                    handleMessage(text)
                 }
             } catch (e: Exception) {
-                Log.d("WebSocket:", "Error parsing message: ${e.message}", e)
+                if (!isManualDisconnect) {
+                    Napier.e("WebSocket connection failed: ${e.message}", e)
+                } else {
+                    Napier.d("WebSocket disconnected manually")
+                }
             }
-        }
-
-        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            Log.d("WebSocket:", "Failure", t)
-            // Reconnection logic could be here or in ViewModel
-        }
-
-        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            super.onClosed(webSocket, code, reason)
-            Log.d("WebSocket:", "reason")
-        }
-
-        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            super.onClosing(webSocket, code, reason)
-            Log.d("WebSocket:", "reason")
         }
     }
 
-    fun connect() {
-        isManualDisconnect = false
-        val viewerId = getViewerIdFromToken() ?: "customer2"
-        webSocketService.connect(
-            "${BuildConfig.WS_URL}?clientType=remote&customerId=$viewerId",
-            wsListener
-        )
+    private fun handleMessage(text: String) {
+        Napier.d("WebSocket Message: $text")
+        try {
+            val response = Json { ignoreUnknownKeys = true }.decodeFromString<WebSocketResponse>(text)
+            
+            if (response.type == "final_transcript") {
+                _onTranscriptReceived.value = response.transcript
+                return
+            }
+
+            if (response.event == SocketEventsHelper.EVENT_TV_LIST) {
+                handleDeviceList(response)
+            }
+        } catch (e: Exception) {
+            Napier.e("Error parsing message: ${e.message}", e)
+        }
     }
 
     private fun getViewerIdFromToken(): String? {
@@ -86,26 +74,26 @@ class RemoteRepository(
             val parts = token.split(".")
             if (parts.size < 2) return null
             val payload = parts[1]
-            val decodedBytes = Base64.decode(payload, Base64.URL_SAFE)
-            val decodedString = String(decodedBytes, Charset.forName("UTF-8"))
-            val jsonObject = gson.fromJson(decodedString, JsonObject::class.java)
-            jsonObject.get("viewerId")?.asString
+            val decodedBytes = payload.decodeBase64Bytes()
+            val decodedString = decodedBytes.decodeToString()
+            val jsonObject = Json.parseToJsonElement(decodedString).jsonObject
+            jsonObject["viewerId"]?.jsonPrimitive?.content
         } catch (e: Exception) {
-            Log.e("RemoteRepository", "Error decoding token: ${e.message}")
+            Napier.e("Error decoding token: ${e.message}")
             null
         }
     }
 
-    fun disconnect() {
+    suspend fun disconnect() {
         isManualDisconnect = true
         webSocketService.disconnect()
     }
 
-    fun sendAudioData(data: ByteArray) {
+    suspend fun sendAudioData(data: ByteArray) {
         webSocketService.sendAudioData(data)
     }
 
-    fun sendEvent(eventJson: String) {
+    suspend fun sendEvent(eventJson: String) {
         webSocketService.sendEventData(eventJson)
     }
 
