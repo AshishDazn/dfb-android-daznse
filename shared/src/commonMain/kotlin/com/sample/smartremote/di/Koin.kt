@@ -44,7 +44,7 @@ val commonModule = module {
     single { ActionHandler() }
     single { AuthRepository(get(), get()) }
     single { RemoteRepository(get(), get()) }
-    single { RemoteViewModel(get(), get(), get(), get()) }
+    single { RemoteViewModel(get(), get(), get(), get(), get()) }
 }
 
 expect val platformModule: Module

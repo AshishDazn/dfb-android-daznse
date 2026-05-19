@@ -78,4 +78,8 @@ dependencies {
     implementation(libs.koin.androidx.compose)
 
     implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.kotlinx.serialization.json)
 }

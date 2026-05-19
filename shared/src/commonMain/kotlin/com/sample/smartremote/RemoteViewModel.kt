@@ -16,6 +16,7 @@ class RemoteViewModel(
     private val remoteRepository: RemoteRepository,
     private val authRepository: AuthRepository,
     private val actionHandler: ActionHandler,
+    private val speechToTextService: SpeechToTextService,
     private val audioService: AudioService,
 ) : ViewModel() {
 
@@ -97,20 +98,65 @@ class RemoteViewModel(
 
     private fun startListening(deviceId: String?) {
         viewModelScope.launch {
-            remoteRepository.sendEvent(SocketEventsHelper.audioStartEvent(deviceId))
             _uiState.value = RemoteState.LISTENING
 
-            try {
-                audioService.startRecording { data ->
+            if (Config.USE_ON_DEVICE_STT) {
+                startSttFlow(deviceId)
+            } else {
+                remoteRepository.sendEvent(SocketEventsHelper.audioStartEvent(deviceId))
+                startAudioFlow(deviceId)
+            }
+        }
+    }
+
+    private fun startSttFlow(deviceId: String?) {
+        try {
+            speechToTextService.startListening(
+                onResult = { transcript ->
                     viewModelScope.launch {
-                        remoteRepository.sendAudioData(data)
+                        if (transcript.isNotEmpty()) {
+                            _uiState.value = RemoteState.RESULT(transcript)
+                            handleVoiceCommand(transcript)
+                        } else {
+                            _uiState.value = RemoteState.IDLE
+                        }
+
+                        delay(2000)
+                        if (_uiState.value is RemoteState.RESULT) {
+                            _uiState.value = RemoteState.IDLE
+                        }
                     }
+                },
+                onError = { error ->
+                    Napier.e(message = "[${Config.LOG_TAG}] STT failed: $error", tag = Config.LOG_TAG)
+                    showFallbackAndReset()
                 }
-            } catch (e: Exception) {
-                Napier.e(message = "[${Config.LOG_TAG}] Recording failed", throwable = e, tag = Config.LOG_TAG)
-                val fallback = "Sorry, I didn’t catch that. Please try again."
-                _uiState.value = RemoteState.RESULT(fallback)
-                delay(2000)
+            )
+        } catch (e: Exception) {
+            Napier.e(message = "[${Config.LOG_TAG}] STT failed", throwable = e, tag = Config.LOG_TAG)
+            showFallbackAndReset()
+        }
+    }
+
+    private fun startAudioFlow(deviceId: String?) {
+        try {
+            audioService.startRecording { data ->
+                viewModelScope.launch {
+                    remoteRepository.sendAudioData(data)
+                }
+            }
+        } catch (e: Exception) {
+            Napier.e(message = "[${Config.LOG_TAG}] Recording failed", throwable = e, tag = Config.LOG_TAG)
+            showFallbackAndReset()
+        }
+    }
+
+    private fun showFallbackAndReset() {
+        val fallback = "Sorry, I didn’t catch that. Please try again."
+        _uiState.value = RemoteState.RESULT(fallback)
+        viewModelScope.launch {
+            delay(2000)
+            if (_uiState.value is RemoteState.RESULT) {
                 _uiState.value = RemoteState.IDLE
             }
         }
@@ -118,8 +164,12 @@ class RemoteViewModel(
 
     private fun stopListening(deviceId: String?) {
         viewModelScope.launch {
-            remoteRepository.sendEvent(SocketEventsHelper.audioEndEvent(deviceId))
-            audioService.stopRecording()
+            if (Config.USE_ON_DEVICE_STT) {
+                speechToTextService.stopListening()
+            } else {
+                remoteRepository.sendEvent(SocketEventsHelper.audioEndEvent(deviceId))
+                audioService.stopRecording()
+            }
             _uiState.value = RemoteState.PROCESSING
         }
     }
@@ -200,6 +250,7 @@ class RemoteViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        speechToTextService.stopListening()
         audioService.stopRecording()
         disconnect()
     }

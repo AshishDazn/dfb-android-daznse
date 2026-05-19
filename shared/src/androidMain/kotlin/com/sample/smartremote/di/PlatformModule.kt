@@ -1,5 +1,6 @@
 package com.sample.smartremote.di
 
+import com.sample.smartremote.SpeechToTextService
 import com.sample.smartremote.data.AndroidSecurePreferences
 import com.sample.smartremote.data.SecurePreferences
 import org.koin.android.ext.koin.androidContext
@@ -8,4 +9,5 @@ import org.koin.dsl.module
 
 actual val platformModule: Module = module {
     single<SecurePreferences> { AndroidSecurePreferences(androidContext()) }
+    single { SpeechToTextService(androidContext()) }
 }

@@ -1,12 +1,12 @@
 package com.sample.smartremote
 
-import com.google.gson.Gson
 import com.sample.smartremote.data.RemoteDevice
 import com.sample.smartremote.data.WebSocketResponse
 import com.sample.smartremote.data.repository.AuthRepository
 import com.sample.smartremote.data.repository.RemoteRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -18,16 +18,16 @@ class RemoteRepositoryTest {
     private lateinit var repository: RemoteRepository
     private val webSocketService = mock(WebSocketService::class.java)
     private val authRepository = mock(AuthRepository::class.java)
-    private val gson = Gson()
+    private val json = Json { ignoreUnknownKeys = true }
 
     @Before
     fun setup() {
-        repository = RemoteRepository(webSocketService, authRepository, gson)
+        repository = RemoteRepository(webSocketService, authRepository)
     }
 
     @Test
     fun `test handleDeviceList with single device`() = runBlocking {
-        val json = """
+        val jsonText = """
             {
                 "event": "tv_list",
                 "devices": [
@@ -36,7 +36,7 @@ class RemoteRepositoryTest {
             }
         """.trimIndent()
         
-        val response = gson.fromJson(json, WebSocketResponse::class.java)
+        val response = json.decodeFromString<WebSocketResponse>(jsonText)
         
         // We need to call the private handleDeviceList method or trigger it via message
         // For testing, I'll make handleDeviceList internal or test via reflection/public trigger
@@ -55,7 +55,7 @@ class RemoteRepositoryTest {
 
     @Test
     fun `test handleDeviceList with multiple devices selects All Devices`() = runBlocking {
-        val json = """
+        val jsonText = """
             {
                 "event": "tv_list",
                 "devices": [
@@ -65,7 +65,7 @@ class RemoteRepositoryTest {
             }
         """.trimIndent()
         
-        val response = gson.fromJson(json, WebSocketResponse::class.java)
+        val response = json.decodeFromString<WebSocketResponse>(jsonText)
         
         val method = RemoteRepository::class.java.getDeclaredMethod("handleDeviceList", WebSocketResponse::class.java)
         method.isAccessible = true
