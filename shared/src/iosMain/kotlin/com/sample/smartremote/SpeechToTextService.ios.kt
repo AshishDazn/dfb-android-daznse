@@ -45,7 +45,7 @@ actual class SpeechToTextService {
         )
     }
 
-    actual fun startListening(onResult: (String) -> Unit, onError: (String) -> Unit) {
+    actual fun startListening(onResult: (String, Boolean) -> Unit, onError: (String) -> Unit) {
         val locale = NSLocale.currentLocale
         speechRecognizer = SFSpeechRecognizer(locale)
 
@@ -65,7 +65,7 @@ actual class SpeechToTextService {
     }
 
     @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-    private fun startRecording(onResult: (String) -> Unit, onError: (String) -> Unit) {
+    private fun startRecording(onResult: (String, Boolean) -> Unit, onError: (String) -> Unit) {
         if (isStarted || hasTap) {
             stopListening()
         }
@@ -81,6 +81,7 @@ actual class SpeechToTextService {
 
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest().apply {
             shouldReportPartialResults = true
+            requiresOnDeviceRecognition = true
         }
 
         val inputNode = audioEngine.inputNode
@@ -93,20 +94,24 @@ actual class SpeechToTextService {
         inputNode.removeTapOnBus(0u)
         inputNode.installTapOnBus(0u, 4096u, recordingFormat) { buffer, _ ->
             autoreleasepool {
-                recognitionRequest?.appendAudioPCMBuffer(buffer!!)
+                if (buffer != null && isStarted) {
+                    recognitionRequest?.appendAudioPCMBuffer(buffer)
+                }
             }
         }
         hasTap = true
 
         audioEngine.prepare()
         try {
-            val error = memScoped {
-                alloc<ObjCObjectVar<NSError?>>()
+            val started = memScoped {
+                val error = alloc<ObjCObjectVar<NSError?>>()
+                val success = audioEngine.startAndReturnError(error.ptr)
+                if (!success) {
+                    onError("Could not start audio engine: ${error.value?.localizedDescription}")
+                }
+                success
             }
-            if (!audioEngine.startAndReturnError(error.ptr)) {
-                onError("Could not start audio engine: ${error.value?.localizedDescription}")
-                return
-            }
+            if (!started) return
             isStarted = true
         } catch (e: Exception) {
             onError("Could not start audio engine: ${e.message}")
@@ -118,8 +123,10 @@ actual class SpeechToTextService {
                 if (result != null) {
                     val transcript = result.bestTranscription.formattedString
                     if (result.isFinal()) {
-                        onResult(transcript)
+                        onResult(transcript, true)
                         cleanupResources()
+                    } else {
+                        onResult(transcript, false)
                     }
                 }
                 if (error != null) {

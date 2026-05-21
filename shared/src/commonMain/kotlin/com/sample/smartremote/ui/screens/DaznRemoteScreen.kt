@@ -227,7 +227,7 @@ fun ListeningCard(uiState: RemoteState) {
             Spacer(modifier = Modifier.height(32.dp))
 
             val text = when (uiState) {
-                is RemoteState.LISTENING -> "Listening..."
+                is RemoteState.LISTENING -> uiState.partialTranscript.ifEmpty { "Listening..." }
                 is RemoteState.PROCESSING -> "Processing..."
                 is RemoteState.RESULT -> uiState.transcript
                 else -> ""

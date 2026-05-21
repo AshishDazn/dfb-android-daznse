@@ -98,7 +98,7 @@ class RemoteViewModel(
 
     private fun startListening(deviceId: String?) {
         viewModelScope.launch {
-            _uiState.value = RemoteState.LISTENING
+            _uiState.value = RemoteState.LISTENING()
 
             if (Config.USE_ON_DEVICE_STT) {
                 startSttFlow(deviceId)
@@ -112,18 +112,22 @@ class RemoteViewModel(
     private fun startSttFlow(deviceId: String?) {
         try {
             speechToTextService.startListening(
-                onResult = { transcript ->
+                onResult = { transcript, isFinal ->
                     viewModelScope.launch {
-                        if (transcript.isNotEmpty()) {
-                            _uiState.value = RemoteState.RESULT(transcript)
-                            handleVoiceCommand(transcript)
-                        } else {
-                            _uiState.value = RemoteState.IDLE
-                        }
+                        if (isFinal) {
+                            if (transcript.isNotEmpty()) {
+                                _uiState.value = RemoteState.RESULT(transcript)
+                                handleVoiceCommand(transcript)
+                            } else {
+                                _uiState.value = RemoteState.IDLE
+                            }
 
-                        delay(2000)
-                        if (_uiState.value is RemoteState.RESULT) {
-                            _uiState.value = RemoteState.IDLE
+                            delay(2000)
+                            if (_uiState.value is RemoteState.RESULT) {
+                                _uiState.value = RemoteState.IDLE
+                            }
+                        } else {
+                            _uiState.value = RemoteState.LISTENING(transcript)
                         }
                     }
                 },

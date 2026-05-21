@@ -12,7 +12,7 @@ import io.github.aakira.napier.Napier
 actual class SpeechToTextService(private val context: Context) {
     private var speechRecognizer: SpeechRecognizer? = null
 
-    actual fun startListening(onResult: (String) -> Unit, onError: (String) -> Unit) {
+    actual fun startListening(onResult: (String, Boolean) -> Unit, onError: (String) -> Unit) {
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
             onError("Speech recognition not available")
             return
@@ -49,14 +49,16 @@ actual class SpeechToTextService(private val context: Context) {
                     if (!matches.isNullOrEmpty()) {
                         val transcript = matches[0]
                         Napier.d(message = "[${Config.LOG_TAG}] SpeechRecognizer result: $transcript", tag = Config.LOG_TAG)
-                        onResult(transcript)
+                        onResult(transcript, true)
                     }
                     destroyRecognizer()
                 }
                 override fun onPartialResults(partialResults: Bundle?) {
                     val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     if (!matches.isNullOrEmpty()) {
-                         Napier.d(message = "[${Config.LOG_TAG}] SpeechRecognizer partial result: ${matches[0]}", tag = Config.LOG_TAG)
+                         val transcript = matches[0]
+                         Napier.d(message = "[${Config.LOG_TAG}] SpeechRecognizer partial result: $transcript", tag = Config.LOG_TAG)
+                         onResult(transcript, false)
                     }
                 }
                 override fun onEvent(eventType: Int, params: Bundle?) {}
@@ -66,6 +68,7 @@ actual class SpeechToTextService(private val context: Context) {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         }
         speechRecognizer?.startListening(intent)
     }
