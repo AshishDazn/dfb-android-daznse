@@ -1,7 +1,9 @@
 package com.sample.smartremote
 
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import com.sample.smartremote.ui.screens.*
 import com.sample.smartremote.ui.views.DPadDirection
 import org.koin.compose.koinInject
@@ -16,18 +18,24 @@ fun SmartRemoteApp() {
     val viewModel: RemoteViewModel = koinInject()
 
     SmartRemoteTheme {
-        val isAuthorized by viewModel.isAuthorized.collectAsState()
-        val isLoggingIn by viewModel.isLoggingIn.collectAsState()
-        val loginError by viewModel.loginError.collectAsState()
+        Scaffold(
+            contentWindowInsets = WindowInsets.safeDrawing
+        ) { innerPadding ->
+            Box(modifier = Modifier.padding(innerPadding)) {
+                val isAuthorized by viewModel.isAuthorized.collectAsState()
+                val isLoggingIn by viewModel.isLoggingIn.collectAsState()
+                val loginError by viewModel.loginError.collectAsState()
 
-        if (!isAuthorized) {
-            AuthorizationScreen(
-                onSignIn = { email, password -> viewModel.signIn(email, password) },
-                isLoading = isLoggingIn,
-                errorMessage = loginError,
-            )
-        } else {
-            SmartRemoteContent(viewModel)
+                if (!isAuthorized) {
+                    AuthorizationScreen(
+                        onSignIn = { email, password -> viewModel.signIn(email, password) },
+                        isLoading = isLoggingIn,
+                        errorMessage = loginError,
+                    )
+                } else {
+                    SmartRemoteContent(viewModel)
+                }
+            }
         }
     }
 }
