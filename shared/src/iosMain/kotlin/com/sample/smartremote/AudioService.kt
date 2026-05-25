@@ -15,6 +15,13 @@ actual class AudioService actual constructor() {
     private var configChangeObserver: NSObjectProtocol? = null
     private var hasTap = false
     private var isStarted = false
+    private var sampleCounter = 0.0
+    private val pcmBuffer = ShortArray(2048)
+    private var pcmBufferIndex = 0
+
+    actual fun isAvailable(): Boolean {
+        return true // iOS audio recording is generally available
+    }
 
     init {
         setupConfigChangeObserver()
@@ -55,18 +62,18 @@ actual class AudioService actual constructor() {
             audioSession.setActive(true, error = null)
 
             val inputNode = audioEngine.inputNode
-            val recordingFormat = AVAudioFormat(
-                commonFormat = AVAudioPCMFormatFloat32,
-                sampleRate = 16000.0,
-                channels = 1u,
-                interleaved = false
-            )
+            val nativeFormat = inputNode.outputFormatForBus(0u)
+            val nativeSampleRate = nativeFormat.sampleRate
             
-            if (recordingFormat.sampleRate == 0.0) {
-                Napier.w(message = "[${Config.LOG_TAG}] iOS AudioService inputNode sampleRate is 0.0, possible reconfig pending", tag = Config.LOG_TAG)
+            if (nativeSampleRate == 0.0) {
+                Napier.w(message = "[${Config.LOG_TAG}] iOS AudioService inputNode sampleRate is 0.0", tag = Config.LOG_TAG)
             }
 
-            inputNode.installTapOnBus(0u, 2048u, recordingFormat) { buffer: AVAudioPCMBuffer?, _: AVAudioTime? ->
+            val ratio = if (nativeSampleRate > 0) nativeSampleRate / 16000.0 else 1.0
+            sampleCounter = 0.0
+            pcmBufferIndex = 0
+
+            inputNode.installTapOnBus(0u, 4096u, nativeFormat) { buffer: AVAudioPCMBuffer?, _: AVAudioTime? ->
                 autoreleasepool {
                     if (buffer != null && isRecording) {
                         val frameLength = buffer.frameLength.toInt()
@@ -74,13 +81,25 @@ actual class AudioService actual constructor() {
                         if (channelData != null) {
                             val data = channelData[0]
                             if (data != null) {
-                                val byteArray = ByteArray(frameLength * 2)
                                 for (i in 0 until frameLength) {
-                                    val sample = (data[i] * 32767.0f).toInt().coerceIn(-32768, 32767).toShort()
-                                    byteArray[i * 2] = (sample.toInt() and 0xFF).toByte()
-                                    byteArray[i * 2 + 1] = ((sample.toInt() shr 8) and 0xFF).toByte()
+                                    sampleCounter += 1.0
+                                    if (sampleCounter >= ratio) {
+                                        val sample = (data[i] * 32767.0f).toInt().coerceIn(-32768, 32767).toShort()
+                                        pcmBuffer[pcmBufferIndex++] = sample
+                                        sampleCounter -= ratio
+                                        
+                                        if (pcmBufferIndex == 2048) {
+                                            val byteArray = ByteArray(4096)
+                                            for (j in 0 until 2048) {
+                                                val s = pcmBuffer[j]
+                                                byteArray[j * 2] = (s.toInt() and 0xFF).toByte()
+                                                byteArray[j * 2 + 1] = ((s.toInt() shr 8) and 0xFF).toByte()
+                                            }
+                                            onData(byteArray)
+                                            pcmBufferIndex = 0
+                                        }
+                                    }
                                 }
-                                onData(byteArray)
                             }
                         }
                     }

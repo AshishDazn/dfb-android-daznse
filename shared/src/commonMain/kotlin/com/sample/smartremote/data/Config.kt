@@ -5,5 +5,5 @@ object Config {
     const val AUTH_URL = "https://cdn.stag.business.dazn.com/authentication/euc1/v1/signin"
     const val DEFAULT_VIEWER_ID = "customer2"
     const val LOG_TAG = "SmartRemote"
-    const val USE_ON_DEVICE_STT = true
+    const val USE_ON_DEVICE_STT = false
 }

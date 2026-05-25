@@ -11,6 +11,9 @@ import io.github.aakira.napier.Napier
 
 actual class SpeechToTextService(private val context: Context) {
     private var speechRecognizer: SpeechRecognizer? = null
+    actual fun isAvailable(): Boolean {
+        return SpeechRecognizer.isRecognitionAvailable(context)
+    }
 
     actual fun startListening(onResult: (String, Boolean) -> Unit, onError: (String) -> Unit) {
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
@@ -38,6 +41,7 @@ actual class SpeechToTextService(private val context: Context) {
                         SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "RecognitionService busy"
                         SpeechRecognizer.ERROR_SERVER -> "Error from server"
                         SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech input"
+                        SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> "Language unavailable"
                         else -> "Unknown error: $error"
                     }
                     Napier.e(message = "[${Config.LOG_TAG}] SpeechRecognizer error: $message", tag = Config.LOG_TAG)
@@ -68,7 +72,6 @@ actual class SpeechToTextService(private val context: Context) {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         }
         speechRecognizer?.startListening(intent)
     }

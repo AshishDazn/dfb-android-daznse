@@ -1,14 +1,24 @@
 package com.sample.smartremote
 
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import platform.AVFAudio.*
+import kotlinx.cinterop.*
 
 actual class PermissionManager actual constructor() {
+    @OptIn(ExperimentalForeignApi::class)
     @Composable
     actual fun withAudioPermission(content: @Composable (hasPermission: Boolean, requestPermission: () -> Unit) -> Unit) {
-        // iOS handles audio permission automatically when AudioQueue or AVAudioSession starts
-        // For simplicity, we assume permission is granted or handled by the system dialog
-        content(true) {
-            // No action needed on iOS for simple use cases
+        val audioSession = remember { AVAudioSession.sharedInstance() }
+        var hasPermission by remember {
+            mutableStateOf(audioSession.recordPermission() == AVAudioSessionRecordPermissionGranted)
         }
+
+        val requestPermission: () -> Unit = {
+            audioSession.requestRecordPermission { granted ->
+                hasPermission = granted
+            }
+        }
+
+        content(hasPermission, requestPermission)
     }
 }

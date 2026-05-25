@@ -8,7 +8,9 @@ import com.sample.smartremote.logic.ActionHandler
 import dev.icerock.moko.mvvm.viewmodel.ViewModel
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
@@ -24,6 +26,9 @@ class RemoteViewModel(
     val uiState = _uiState.asStateFlow()
     val devices = remoteRepository.devices
     val selectedDeviceId = remoteRepository.selectedDeviceId
+
+    private val _errorEvents = MutableSharedFlow<String>()
+    val errorEvents = _errorEvents.asSharedFlow()
 
     private val _isAuthorized = MutableStateFlow(authRepository.isAuthorized())
     val isAuthorized = _isAuthorized.asStateFlow()
@@ -98,6 +103,18 @@ class RemoteViewModel(
 
     private fun startListening(deviceId: String?) {
         viewModelScope.launch {
+            if (Config.USE_ON_DEVICE_STT) {
+                if (!speechToTextService.isAvailable()) {
+                    _errorEvents.emit("Speech recognition is not supported on this device")
+                    return@launch
+                }
+            } else {
+                if (!audioService.isAvailable()) {
+                    _errorEvents.emit("Audio recording is not supported on this device")
+                    return@launch
+                }
+            }
+
             _uiState.value = RemoteState.LISTENING()
 
             if (Config.USE_ON_DEVICE_STT) {
@@ -170,11 +187,14 @@ class RemoteViewModel(
         viewModelScope.launch {
             if (Config.USE_ON_DEVICE_STT) {
                 speechToTextService.stopListening()
+                if (_uiState.value !is RemoteState.RESULT) {
+                    _uiState.value = RemoteState.IDLE
+                }
             } else {
                 remoteRepository.sendEvent(SocketEventsHelper.audioEndEvent(deviceId))
                 audioService.stopRecording()
+                _uiState.value = RemoteState.PROCESSING
             }
-            _uiState.value = RemoteState.PROCESSING
         }
     }
 

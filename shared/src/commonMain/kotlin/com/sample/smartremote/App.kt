@@ -18,10 +18,18 @@ import com.sample.smartremote.ui.theme.SmartRemoteTheme
 fun SmartRemoteApp() {
     KoinContext {
         val viewModel: RemoteViewModel = koinInject()
+        val snackbarHostState = remember { SnackbarHostState() }
+
+        LaunchedEffect(Unit) {
+            viewModel.errorEvents.collect { message ->
+                snackbarHostState.showSnackbar(message)
+            }
+        }
 
         SmartRemoteTheme {
             Scaffold(
-                contentWindowInsets = WindowInsets.safeDrawing
+                contentWindowInsets = WindowInsets.safeDrawing,
+                snackbarHost = { SnackbarHost(snackbarHostState) }
             ) { innerPadding ->
                 Box(modifier = Modifier.padding(innerPadding)) {
                     val isAuthorized by viewModel.isAuthorized.collectAsState()

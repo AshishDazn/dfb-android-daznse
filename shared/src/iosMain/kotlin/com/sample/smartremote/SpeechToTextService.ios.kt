@@ -20,6 +20,10 @@ actual class SpeechToTextService {
     private var isStarted = false
     private var hasTap = false
 
+    actual fun isAvailable(): Boolean {
+        return SFSpeechRecognizer.supportedLocales().isNotEmpty()
+    }
+
     init {
         setupConfigChangeObserver()
     }

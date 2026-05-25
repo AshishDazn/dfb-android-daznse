@@ -27,6 +27,10 @@ actual class AudioService actual constructor() {
 
     private val recordingScope = CoroutineScope(Dispatchers.IO)
 
+    actual fun isAvailable(): Boolean {
+        return true // Android audio recording is generally available if permission is granted
+    }
+
     @SuppressLint("MissingPermission")
     actual fun startRecording(onData: (ByteArray) -> Unit) {
         recordingScope.launch {
