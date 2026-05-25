@@ -51,16 +51,22 @@ actual class AudioService actual constructor() {
         try {
             audioSession.setCategory(AVAudioSessionCategoryPlayAndRecord, withOptions = AVAudioSessionCategoryOptionDefaultToSpeaker, error = null)
             audioSession.setMode(AVAudioSessionModeSpokenAudio, error = null)
+            audioSession.setPreferredSampleRate(16000.0, error = null)
             audioSession.setActive(true, error = null)
 
             val inputNode = audioEngine.inputNode
-            val recordingFormat = inputNode.outputFormatForBus(0u)
+            val recordingFormat = AVAudioFormat(
+                commonFormat = AVAudioPCMFormatFloat32,
+                sampleRate = 16000.0,
+                channels = 1u,
+                interleaved = false
+            )
             
             if (recordingFormat.sampleRate == 0.0) {
                 Napier.w(message = "[${Config.LOG_TAG}] iOS AudioService inputNode sampleRate is 0.0, possible reconfig pending", tag = Config.LOG_TAG)
             }
 
-            inputNode.installTapOnBus(0u, 4096u, recordingFormat) { buffer: AVAudioPCMBuffer?, _: AVAudioTime? ->
+            inputNode.installTapOnBus(0u, 2048u, recordingFormat) { buffer: AVAudioPCMBuffer?, _: AVAudioTime? ->
                 autoreleasepool {
                     if (buffer != null && isRecording) {
                         val frameLength = buffer.frameLength.toInt()

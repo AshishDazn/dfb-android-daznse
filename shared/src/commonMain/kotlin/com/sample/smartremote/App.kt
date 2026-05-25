@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import com.sample.smartremote.ui.screens.*
 import com.sample.smartremote.ui.views.DPadDirection
 import org.koin.compose.koinInject
+import org.koin.compose.KoinContext
 import kotlinx.coroutines.launch
 
 import com.sample.smartremote.ui.theme.SmartRemoteTheme
@@ -15,25 +16,27 @@ import com.sample.smartremote.ui.theme.SmartRemoteTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartRemoteApp() {
-    val viewModel: RemoteViewModel = koinInject()
+    KoinContext {
+        val viewModel: RemoteViewModel = koinInject()
 
-    SmartRemoteTheme {
-        Scaffold(
-            contentWindowInsets = WindowInsets.safeDrawing
-        ) { innerPadding ->
-            Box(modifier = Modifier.padding(innerPadding)) {
-                val isAuthorized by viewModel.isAuthorized.collectAsState()
-                val isLoggingIn by viewModel.isLoggingIn.collectAsState()
-                val loginError by viewModel.loginError.collectAsState()
+        SmartRemoteTheme {
+            Scaffold(
+                contentWindowInsets = WindowInsets.safeDrawing
+            ) { innerPadding ->
+                Box(modifier = Modifier.padding(innerPadding)) {
+                    val isAuthorized by viewModel.isAuthorized.collectAsState()
+                    val isLoggingIn by viewModel.isLoggingIn.collectAsState()
+                    val loginError by viewModel.loginError.collectAsState()
 
-                if (!isAuthorized) {
-                    AuthorizationScreen(
-                        onSignIn = { email, password -> viewModel.signIn(email, password) },
-                        isLoading = isLoggingIn,
-                        errorMessage = loginError,
-                    )
-                } else {
-                    SmartRemoteContent(viewModel)
+                    if (!isAuthorized) {
+                        AuthorizationScreen(
+                            onSignIn = { email, password -> viewModel.signIn(email, password) },
+                            isLoading = isLoggingIn,
+                            errorMessage = loginError,
+                        )
+                    } else {
+                        SmartRemoteContent(viewModel)
+                    }
                 }
             }
         }
