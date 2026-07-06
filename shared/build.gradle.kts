@@ -3,6 +3,7 @@
 import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -11,6 +12,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     kotlin("plugin.compose")
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.buildkonfig)
 }
 
 kotlin {
@@ -45,6 +47,7 @@ kotlin {
             // Ktor
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.serialization.kotlinx.json)
 
             // Koin
@@ -96,6 +99,22 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+buildkonfig {
+    packageName = "com.sample.smartremote.data"
+    
+    defaultConfigs {
+        buildConfigField(STRING, "AUTH_URL", "https://cdn.stag.business.dazn.com/authentication/euc1/v1/signin")
+        buildConfigField(STRING, "WS_URL", "ws://63.178.32.34:3000/")
+    }
+    
+    targetConfigs {
+        create("prod") {
+            buildConfigField(STRING, "AUTH_URL", "https://cdn.business.dazn.com/authentication/euc1/v1/signin")
+            buildConfigField(STRING, "WS_URL", "ws://63.178.32.34:3000/")
+        }
     }
 }
 

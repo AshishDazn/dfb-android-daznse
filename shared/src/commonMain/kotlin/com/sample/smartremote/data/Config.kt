@@ -1,9 +1,9 @@
 package com.sample.smartremote.data
 
 object Config {
-    const val WS_URL = "ws://63.178.32.34:3000/"
-    const val AUTH_URL = "https://cdn.stag.business.dazn.com/authentication/euc1/v1/signin"
-    const val DEFAULT_VIEWER_ID = "customer2"
-    const val LOG_TAG = "SmartRemote"
-    const val USE_ON_DEVICE_STT = false
+    val WS_URL: String = BuildKonfig.WS_URL
+    val AUTH_URL: String = BuildKonfig.AUTH_URL
+    const val DEFAULT_VIEWER_ID: String = "customer2"
+    const val LOG_TAG: String = "SmartRemote"
+    const val USE_ON_DEVICE_STT: Boolean = false
 }

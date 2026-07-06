@@ -16,6 +16,7 @@ import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import kotlin.time.Duration.Companion.seconds
 
 fun initKoin(
     appDeclaration: (KoinApplication) -> Unit = {}
@@ -32,13 +33,15 @@ fun initKoin(
 val commonModule = module {
     single {
         HttpClient {
-            install(WebSockets)
+            install(WebSockets) {
+                pingInterval = 20.seconds
+            }
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true })
             }
         }
     }
-    single { WebSocketService() }
+    single { WebSocketService(get()) }
     single { AudioService() }
     single { PermissionManager() }
     single { ActionHandler() }

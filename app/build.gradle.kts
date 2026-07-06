@@ -40,7 +40,7 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true
+        buildConfig = false
     }
 
     flavorDimensions += "environment"
@@ -49,20 +49,9 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".stage"
             versionNameSuffix = "-stage"
-            buildConfigField("String", "BASE_URL", "\"https://cdn.stag.business.dazn.com/\"")
-            buildConfigField("String", "WS_URL", "\"ws://63.178.32.34:3000/\"")
         }
         create("prod") {
             dimension = "environment"
-            buildConfigField("String", "BASE_URL", "\"https://cdn.business.dazn.com/\"")
-            buildConfigField("String", "WS_URL", "\"ws://63.178.32.34:3000/\"")
-        }
-        create("qa") {
-            dimension = "environment"
-            applicationIdSuffix = ".test"
-            versionNameSuffix = "-test"
-            buildConfigField("String", "BASE_URL", "\"https://cdn.test.business.dazn.com/\"")
-            buildConfigField("String", "WS_URL", "\"ws://63.178.32.34:3000/\"")
         }
     }
 }
@@ -78,6 +67,7 @@ dependencies {
     implementation(libs.koin.androidx.compose)
 
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.napier)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockito.core)

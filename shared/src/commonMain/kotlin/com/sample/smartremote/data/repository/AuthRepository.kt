@@ -4,6 +4,7 @@ import com.sample.smartremote.data.Config
 import com.sample.smartremote.data.LoginRequest
 import com.sample.smartremote.data.LoginResponse
 import com.sample.smartremote.data.SecurePreferences
+import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -24,6 +25,7 @@ class AuthRepository(
         )
 
         try {
+            Napier.d(message = "[${Config.LOG_TAG}] Attempting sign-in to: ${Config.AUTH_URL}", tag = Config.LOG_TAG)
             val response = httpClient.post(Config.AUTH_URL) {
                 contentType(ContentType.Application.Json)
                 setBody(loginRequest)

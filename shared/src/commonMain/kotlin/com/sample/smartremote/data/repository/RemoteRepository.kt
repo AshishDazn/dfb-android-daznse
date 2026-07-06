@@ -10,6 +10,7 @@ import io.ktor.util.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -31,22 +32,36 @@ class RemoteRepository(
     val onTranscriptReceived = _onTranscriptReceived.asStateFlow()
 
     private var isManualDisconnect = false
+    private var connectionJob: kotlinx.coroutines.Job? = null
 
     fun connect(scope: CoroutineScope) {
+        connectionJob?.cancel()
         isManualDisconnect = false
         val viewerId = getViewerIdFromToken() ?: Config.DEFAULT_VIEWER_ID
-        scope.launch {
-            try {
-                val wsUrl = Config.WS_URL
-                webSocketService.connect("${wsUrl}?clientType=remote&customerId=$viewerId")
-                webSocketService.receive().collect { text ->
-                    handleMessage(text)
-                }
-            } catch (e: Exception) {
-                if (!isManualDisconnect) {
-                    Napier.e(message = "[${Config.LOG_TAG}] WebSocket connection failed: ${e.message}", throwable = e, tag = Config.LOG_TAG)
-                } else {
-                    Napier.d(message = "[${Config.LOG_TAG}] WebSocket disconnected manually", tag = Config.LOG_TAG)
+        connectionJob = scope.launch {
+            var retryDelay = 1000L
+            while (!isManualDisconnect) {
+                try {
+                    val wsUrl = Config.WS_URL
+                    val fullUrl = "${wsUrl}?clientType=remote&customerId=$viewerId"
+                    Napier.d(message = "[${Config.LOG_TAG}] Attempting to connect to WebSocket: $fullUrl", tag = Config.LOG_TAG)
+                    webSocketService.connect(fullUrl)
+                    Napier.d(message = "[${Config.LOG_TAG}] WebSocket connected successfully to: $fullUrl", tag = Config.LOG_TAG)
+                    
+                    // Reset retry delay on successful connection
+                    retryDelay = 1000L
+                    
+                    webSocketService.receive().collect { text ->
+                        handleMessage(text)
+                    }
+                } catch (e: Exception) {
+                    if (!isManualDisconnect) {
+                        Napier.e(message = "[${Config.LOG_TAG}] WebSocket connection error: ${e.message}. Retrying in ${retryDelay/1000}s...", throwable = e, tag = Config.LOG_TAG)
+                        delay(retryDelay)
+                        retryDelay = (retryDelay * 2).coerceAtMost(30000L) // Exponential backoff
+                    } else {
+                        Napier.d(message = "[${Config.LOG_TAG}] WebSocket disconnected manually", tag = Config.LOG_TAG)
+                    }
                 }
             }
         }
@@ -88,6 +103,8 @@ class RemoteRepository(
 
     suspend fun disconnect() {
         isManualDisconnect = true
+        connectionJob?.cancel()
+        connectionJob = null
         webSocketService.disconnect()
     }
 
